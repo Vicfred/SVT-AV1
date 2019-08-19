@@ -495,7 +495,7 @@ default_wedge_interintra_cdf[BlockSizeS_ALL][CDF_SIZE(2)] = {
 };
 
 static const AomCdfProb
-default_compound_type_cdf[BlockSizeS_ALL][CDF_SIZE(COMPOUND_TYPES - 1)] = {
+default_compound_type_cdf[BlockSizeS_ALL][CDF_SIZE(MASKED_COMPOUND_TYPES)] = {
     { AOM_CDF2(16384) }, { AOM_CDF2(16384) }, { AOM_CDF2(16384) },
     { AOM_CDF2(23431) }, { AOM_CDF2(13171) }, { AOM_CDF2(11470) },
     { AOM_CDF2(9770) }, { AOM_CDF2(9100) }, { AOM_CDF2(8233) },
@@ -4443,7 +4443,7 @@ static int32_t get_q_ctx(int32_t q) {
     return 3;
 }
 
-void av1_default_coef_probs(FRAME_CONTEXT *fc, int32_t base_qindex) {
+void eb_av1_default_coef_probs(FRAME_CONTEXT *fc, int32_t base_qindex) {
     const int32_t index = get_q_ctx(base_qindex);
 
 #if CONFIG_ENTROPY_STATS
@@ -4497,7 +4497,7 @@ static void reset_nmv_counter(NmvContext *nmv) {
     }
 }
 
-void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
+void eb_av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
     RESET_CDF_COUNTER(fc->txb_skip_cdf, 2);
     RESET_CDF_COUNTER(fc->eob_extra_cdf, 2);
     RESET_CDF_COUNTER(fc->dc_sign_cdf, 2);
@@ -4516,7 +4516,7 @@ void av1_reset_cdf_symbol_counters(FRAME_CONTEXT *fc) {
     RESET_CDF_COUNTER(fc->refmv_cdf, 2);
     RESET_CDF_COUNTER(fc->drl_cdf, 2);
     RESET_CDF_COUNTER(fc->inter_compound_mode_cdf, INTER_COMPOUND_MODES);
-    RESET_CDF_COUNTER(fc->compound_type_cdf, COMPOUND_TYPES - 1);
+    RESET_CDF_COUNTER(fc->compound_type_cdf, MASKED_COMPOUND_TYPES);
     RESET_CDF_COUNTER(fc->wedge_idx_cdf, 16);
     RESET_CDF_COUNTER(fc->interintra_cdf, 2);
     RESET_CDF_COUNTER(fc->wedge_interintra_cdf, 2);

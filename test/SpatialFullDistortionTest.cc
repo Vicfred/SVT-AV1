@@ -7,18 +7,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// Workaround to eliminate the compiling warning on linux
+// The macro will conflict with definition in gtest.h
+#ifdef __USE_GNU
+#undef __USE_GNU  // defined in EbThreads.h
+#endif
+#ifdef _GNU_SOURCE
+#undef _GNU_SOURCE  // defined in EbThreads.h
+#endif
+
 #include "aom_dsp_rtcd.h"
 #include "EbDefinitions.h"
 #include "EbPictureOperators_AVX2.h"
-#include "EbTransforms.h"
+#include "EbPictureOperators_AVX512.h"
+#include "EbPictureOperators_C.h"
 #include "EbUnitTestUtility.h"
-#include "random.h"
 #include "util.h"
 
 namespace {
 
-class SpatialFullDistortionTest : public ::testing::Test {
+typedef uint64_t (*spatial_full_distortion_kernel_func)(
+    uint8_t *input, uint32_t input_offset, uint32_t input_stride,
+    uint8_t *recon, uint32_t recon_offset, uint32_t recon_stride,
+    uint32_t area_width, uint32_t area_height);
+
+class SpatialFullDistortionTest
+    : public ::testing::TestWithParam<spatial_full_distortion_kernel_func> {
   public:
+    SpatialFullDistortionTest() : func_(GetParam()) {
+    }
+
     ~SpatialFullDistortionTest();
 
     void SetUp() {
@@ -44,6 +62,7 @@ class SpatialFullDistortionTest : public ::testing::Test {
         eb_buf_random_u8(recon_, MAX_SB_SIZE * recon_stride_);
     }
 
+    spatial_full_distortion_kernel_func func_;
     uint8_t *input_;
     uint8_t *recon_;
     uint32_t input_stride_;
@@ -61,18 +80,21 @@ void SpatialFullDistortionTest::RunCheckOutput() {
                  area_height += 4) {
                 const uint64_t dist_org =
                     spatial_full_distortion_kernel_c(input_,
+                                                     0,
                                                      input_stride_,
                                                      recon_,
+                                                     0,
                                                      recon_stride_,
                                                      area_width,
                                                      area_height);
-                const uint64_t dist_opt =
-                    spatial_full_distortion_kernel_avx2(input_,
-                                                        input_stride_,
-                                                        recon_,
-                                                        recon_stride_,
-                                                        area_width,
-                                                        area_height);
+                const uint64_t dist_opt = func_(input_,
+                                                0,
+                                                input_stride_,
+                                                recon_,
+                                                0,
+                                                recon_stride_,
+                                                area_width,
+                                                area_height);
 
                 EXPECT_EQ(dist_org, dist_opt)
                     << area_width << "x" << area_height;
@@ -97,8 +119,10 @@ void SpatialFullDistortionTest::RunSpeedTest() {
 
         for (int i = 0; i < num_loops; ++i) {
             dist_org = spatial_full_distortion_kernel_c(input_,
+                                                        0,
                                                         input_stride_,
                                                         recon_,
+                                                        0,
                                                         recon_stride_,
                                                         area_width,
                                                         area_height);
@@ -107,12 +131,14 @@ void SpatialFullDistortionTest::RunSpeedTest() {
         EbStartTime(&middle_time_seconds, &middle_time_useconds);
 
         for (int i = 0; i < num_loops; ++i) {
-            dist_opt = spatial_full_distortion_kernel_avx2(input_,
-                                                           input_stride_,
-                                                           recon_,
-                                                           recon_stride_,
-                                                           area_width,
-                                                           area_height);
+            dist_opt = func_(input_,
+                             0,
+                             input_stride_,
+                             recon_,
+                             0,
+                             recon_stride_,
+                             area_width,
+                             area_height);
         }
         EbStartTime(&finish_time_seconds, &finish_time_useconds);
 
@@ -129,12 +155,12 @@ void SpatialFullDistortionTest::RunSpeedTest() {
                                       finish_time_useconds,
                                       &time_o);
         printf("Average Nanoseconds per Function Call\n");
-        printf("    spatial_full_distortion_kernel_c   (%dx%d) : %6.2f\n",
+        printf("    spatial_full_distortion_kernel_c  (%dx%d) : %6.2f\n",
                area_width,
                area_height,
                1000000 * time_c / num_loops);
         printf(
-            "    spatial_full_distortion_kernel_avx2(%dx%d) : %6.2f   "
+            "    spatial_full_distortion_kernel_opt(%dx%d) : %6.2f   "
             "(Comparison: %5.2fx)\n",
             area_width,
             area_height,
@@ -143,12 +169,21 @@ void SpatialFullDistortionTest::RunSpeedTest() {
     }
 }
 
-TEST_F(SpatialFullDistortionTest, CheckOutput) {
+TEST_P(SpatialFullDistortionTest, CheckOutput) {
     RunCheckOutput();
 }
 
-TEST_F(SpatialFullDistortionTest, DISABLED_Speed) {
+TEST_P(SpatialFullDistortionTest, DISABLED_Speed) {
     RunSpeedTest();
 }
+
+INSTANTIATE_TEST_CASE_P(AVX2, SpatialFullDistortionTest,
+                        ::testing::Values(spatial_full_distortion_kernel_avx2));
+
+#ifndef NON_AVX512_SUPPORT
+INSTANTIATE_TEST_CASE_P(
+    AVX512, SpatialFullDistortionTest,
+    ::testing::Values(spatial_full_distortion_kernel_avx512));
+#endif
 
 };  // namespace

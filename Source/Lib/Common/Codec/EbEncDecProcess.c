@@ -24,13 +24,13 @@
 #include "EbUtility.h"
 #include "grainSynthesis.h"
 
-void av1_cdef_search(
+void eb_av1_cdef_search(
     EncDecContext                *context_ptr,
     SequenceControlSet           *sequence_control_set_ptr,
     PictureControlSet            *picture_control_set_ptr
 );
 
-void av1_cdef_frame(
+void eb_av1_cdef_frame(
     EncDecContext                *context_ptr,
     SequenceControlSet           *sequence_control_set_ptr,
     PictureControlSet            *pCs
@@ -47,13 +47,13 @@ void av1_cdef_frame16bit(
     PictureControlSet            *pCs
 );
 
-void av1_add_film_grain(EbPictureBufferDesc *src,
+void eb_av1_add_film_grain(EbPictureBufferDesc *src,
     EbPictureBufferDesc *dst,
     aom_film_grain_t *film_grain_ptr);
 
-void av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, Av1Common *cm, int32_t after_cdef);
-void av1_pick_filter_restoration(const Yv12BufferConfig *src, Yv12BufferConfig * trial_frame_rst /*Av1Comp *cpi*/, Macroblock *x, Av1Common *const cm);
-void av1_loop_restoration_filter_frame(Yv12BufferConfig *frame, Av1Common *cm, int32_t optimized_lr);
+void eb_av1_loop_restoration_save_boundary_lines(const Yv12BufferConfig *frame, Av1Common *cm, int32_t after_cdef);
+void eb_av1_pick_filter_restoration(const Yv12BufferConfig *src, Yv12BufferConfig * trial_frame_rst /*Av1Comp *cpi*/, Macroblock *x, Av1Common *const cm);
+void eb_av1_loop_restoration_filter_frame(Yv12BufferConfig *frame, Av1Common *cm, int32_t optimized_lr);
 
 const int16_t encMinDeltaQpWeightTab[MAX_TEMPORAL_LAYERS] = { 100, 100, 100, 100, 100, 100 };
 const int16_t encMaxDeltaQpWeightTab[MAX_TEMPORAL_LAYERS] = { 100, 100, 100, 100, 100, 100 };
@@ -98,8 +98,10 @@ EbErrorType enc_dec_context_ctor(
     EbFifo                *picture_demux_fifo_ptr,
     EbBool                  is16bit,
     EbColorFormat           color_format,
+    EbBool                  enable_hbd_mode_decision,
     uint32_t                max_input_luma_width,
-    uint32_t                max_input_luma_height){
+    uint32_t                max_input_luma_height)
+{
     (void)max_input_luma_width;
     (void)max_input_luma_height;
 
@@ -190,7 +192,10 @@ EbErrorType enc_dec_context_ctor(
     EB_NEW(
         context_ptr->md_context,
         mode_decision_context_ctor,
-        color_format, 0, 0);
+        color_format, 0, 0, enable_hbd_mode_decision);
+
+    if (enable_hbd_mode_decision)
+        context_ptr->md_context->input_sample16bit_buffer = context_ptr->input_sample16bit_buffer;
 
     context_ptr->md_context->enc_dec_context_ptr = context_ptr;
 
@@ -222,6 +227,13 @@ static void ResetEncodePassNeighborArrays(PictureControlSet *picture_control_set
     neighbor_array_unit_reset(picture_control_set_ptr->ep_luma_dc_sign_level_coeff_neighbor_array);
     neighbor_array_unit_reset(picture_control_set_ptr->ep_cb_dc_sign_level_coeff_neighbor_array);
     neighbor_array_unit_reset(picture_control_set_ptr->ep_cr_dc_sign_level_coeff_neighbor_array);
+    // TODO(Joel): 8-bit ep_luma_recon_neighbor_array (Cb,Cr) when is16bit==0?
+    EbBool is16bit = (EbBool)(picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
+    if (is16bit) {
+        neighbor_array_unit_reset(picture_control_set_ptr->ep_luma_recon_neighbor_array16bit);
+        neighbor_array_unit_reset(picture_control_set_ptr->ep_cb_recon_neighbor_array16bit);
+        neighbor_array_unit_reset(picture_control_set_ptr->ep_cr_recon_neighbor_array16bit);
+    }
     return;
 }
 
@@ -234,8 +246,10 @@ static void ResetEncDec(
     SequenceControlSet    *sequence_control_set_ptr,
     uint32_t                   segment_index)
 {
+#if !ENABLE_CDF_UPDATE
     EB_SLICE                     slice_type;
     MdRateEstimationContext   *md_rate_estimation_array;
+#endif
     context_ptr->is16bit = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
 
     // QP
@@ -252,15 +266,24 @@ static void ResetEncDec(
     context_ptr->chroma_qp = context_ptr->qp;
 
     // Lambda Assignement
-    context_ptr->qp_index = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->base_qindex;
+    context_ptr->qp_index = (uint8_t)picture_control_set_ptr->
+        parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx;
     (*av1_lambda_assignment_function_table[picture_control_set_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,
         &context_ptr->full_lambda,
         &context_ptr->fast_chroma_lambda,
         &context_ptr->full_chroma_lambda,
         (uint8_t)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr->bit_depth,
-        context_ptr->qp_index);
-
+        context_ptr->qp_index,
+        picture_control_set_ptr->hbd_mode_decision);
+#if ENABLE_CDF_UPDATE
+    // Reset MD rate Estimation table to initial values by copying from md_rate_estimation_array
+    if (context_ptr->is_md_rate_estimation_ptr_owner) {
+        EB_FREE(context_ptr->md_rate_estimation_ptr);
+        context_ptr->is_md_rate_estimation_ptr_owner = EB_FALSE;
+    }
+    context_ptr->md_rate_estimation_ptr = picture_control_set_ptr->md_rate_estimation_array;
+#else
     // Slice Type
     slice_type =
         (picture_control_set_ptr->parent_pcs_ptr->idr_flag == EB_TRUE) ? I_SLICE :
@@ -281,6 +304,7 @@ static void ResetEncDec(
     }
 
     context_ptr->md_rate_estimation_ptr = md_rate_estimation_array;
+#endif
     if (segment_index == 0){
         ResetEncodePassNeighborArrays(picture_control_set_ptr);
         reset_segmentation_map(picture_control_set_ptr->segmentation_neighbor_map);
@@ -310,14 +334,16 @@ static void EncDecConfigureLcu(
     context_ptr->chroma_qp = context_ptr->qp;
     /* Note(CHKN) : when Qp modulation varies QP on a sub-LCU(CU) basis,  Lamda has to change based on Cu->QP , and then this code has to move inside the CU loop in MD */
     (void)sb_ptr;
-    context_ptr->qp_index = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->base_qindex;
+    context_ptr->qp_index = (uint8_t)picture_control_set_ptr->
+        parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx;
     (*av1_lambda_assignment_function_table[picture_control_set_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,
         &context_ptr->full_lambda,
         &context_ptr->fast_chroma_lambda,
         &context_ptr->full_chroma_lambda,
         (uint8_t)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr->bit_depth,
-        context_ptr->qp_index);
+        context_ptr->qp_index,
+        picture_control_set_ptr->hbd_mode_decision);
 
     return;
 }
@@ -561,9 +587,9 @@ void ReconOutput(
                 if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE)
                     film_grain_ptr = &((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->film_grain_params;
                 else
-                    film_grain_ptr = &picture_control_set_ptr->parent_pcs_ptr->film_grain_params;
+                    film_grain_ptr = &picture_control_set_ptr->parent_pcs_ptr->frm_hdr.film_grain_params;
 
-                av1_add_film_grain(recon_ptr, intermediateBufferPtr, film_grain_ptr);
+                eb_av1_add_film_grain(recon_ptr, intermediateBufferPtr, film_grain_ptr);
                 recon_ptr = intermediateBufferPtr;
             }
 
@@ -1462,7 +1488,9 @@ void* enc_dec_kernel(void *input_ptr)
             reset_mode_decision( // HT done
                 context_ptr->md_context,
                 picture_control_set_ptr,
+#if !ENABLE_CDF_UPDATE
                 sequence_control_set_ptr,
+#endif
                 segment_index);
 
             // Reset EncDec Coding State
@@ -1489,11 +1517,15 @@ void* enc_dec_kernel(void *input_ptr)
                     context_ptr->md_context->cu_use_ref_src_flag = (picture_control_set_ptr->parent_pcs_ptr->use_src_ref) && (picture_control_set_ptr->parent_pcs_ptr->edge_results_ptr[sb_index].edge_block_num == EB_FALSE || picture_control_set_ptr->parent_pcs_ptr->sb_flat_noise_array[sb_index]) ? EB_TRUE : EB_FALSE;
 
                     if (picture_control_set_ptr->update_cdf) {
+#if ENABLE_CDF_UPDATE
+                        picture_control_set_ptr->rate_est_array[sb_index] = *picture_control_set_ptr->md_rate_estimation_array;
+#else
                         MdRateEstimationContext* md_rate_estimation_array = sequence_control_set_ptr->encode_context_ptr->md_rate_estimation_array;
                         md_rate_estimation_array += picture_control_set_ptr->slice_type * TOTAL_NUMBER_OF_QP_VALUES + context_ptr->md_context->qp;
 
                         //this is temp, copy all default tables
                         picture_control_set_ptr->rate_est_array[sb_index] = *md_rate_estimation_array;
+#endif
 #if CABAC_SERIAL
                         if (sb_index == 0)
                             picture_control_set_ptr->ec_ctx_array[sb_index] = *picture_control_set_ptr->coeff_est_entropy_coder_ptr->fc;
@@ -1636,10 +1668,15 @@ void* enc_dec_kernel(void *input_ptr)
             {
                 if (picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
                     ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->film_grain_params
-                        = picture_control_set_ptr->parent_pcs_ptr->film_grain_params;
+                        = picture_control_set_ptr->parent_pcs_ptr->frm_hdr.film_grain_params;
                 }
             }
-
+#if ENABLE_CDF_UPDATE
+            if (picture_control_set_ptr->parent_pcs_ptr->frame_end_cdf_update_mode && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE && picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)
+                for (int frame = LAST_FRAME; frame <= ALTREF_FRAME; ++frame)
+                    ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->global_motion[frame]
+                    = picture_control_set_ptr->parent_pcs_ptr->global_motion[frame];
+#endif
             EB_MEMCPY(picture_control_set_ptr->parent_pcs_ptr->av1x->sgrproj_restore_cost, context_ptr->md_rate_estimation_ptr->sgrproj_restore_fac_bits, 2 * sizeof(int32_t));
             EB_MEMCPY(picture_control_set_ptr->parent_pcs_ptr->av1x->switchable_restore_cost, context_ptr->md_rate_estimation_ptr->switchable_restore_fac_bits, 3 * sizeof(int32_t));
             EB_MEMCPY(picture_control_set_ptr->parent_pcs_ptr->av1x->wiener_restore_cost, context_ptr->md_rate_estimation_ptr->wiener_restore_fac_bits, 2 * sizeof(int32_t));
@@ -1666,7 +1703,7 @@ void* enc_dec_kernel(void *input_ptr)
     return EB_NULL;
 }
 
-void av1_add_film_grain(EbPictureBufferDesc *src,
+void eb_av1_add_film_grain(EbPictureBufferDesc *src,
     EbPictureBufferDesc *dst,
     aom_film_grain_t *film_grain_ptr) {
     uint8_t *luma, *cb, *cr;
@@ -1730,7 +1767,7 @@ void av1_add_film_grain(EbPictureBufferDesc *src,
     width = dst->width;
     height = dst->height;
 
-    av1_add_film_grain_run(&params, luma, cb, cr, height, width, luma_stride,
+    eb_av1_add_film_grain_run(&params, luma, cb, cr, height, width, luma_stride,
         chroma_stride, use_high_bit_depth, chroma_subsamp_y,
         chroma_subsamp_x);
     return;

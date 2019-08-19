@@ -15,7 +15,9 @@
 #include "EbRateControlTasks.h"
 #include "EbTime.h"
 #include "EbModeDecisionProcess.h"
-
+#if ENABLE_CDF_UPDATE
+#include "EbPictureDemuxResults.h"
+#endif
 #define DETAILED_FRAME_OUTPUT 0
 
 static EbBool IsPassthroughData(EbLinkedListNode* dataNode)
@@ -42,12 +44,18 @@ static void packetization_context_dctor(EbPtr p)
 EbErrorType packetization_context_ctor(
     PacketizationContext  *context_ptr,
     EbFifo                *entropy_coding_input_fifo_ptr,
-    EbFifo                *rate_control_tasks_output_fifo_ptr)
+    EbFifo                *rate_control_tasks_output_fifo_ptr
+#if ENABLE_CDF_UPDATE
+    , EbFifo              *picture_manager_input_fifo_ptr
+#endif
+)
 {
     context_ptr->dctor = packetization_context_dctor;
     context_ptr->entropy_coding_input_fifo_ptr = entropy_coding_input_fifo_ptr;
     context_ptr->rate_control_tasks_output_fifo_ptr = rate_control_tasks_output_fifo_ptr;
-
+#if ENABLE_CDF_UPDATE
+    context_ptr->picture_manager_input_fifo_ptr = picture_manager_input_fifo_ptr;
+#endif
     EB_MALLOC_ARRAY(context_ptr->pps_config, 1);
 
     return EB_ErrorNone;
@@ -98,6 +106,7 @@ void update_rc_rate_tables(
 
     uint32_t  sb_index;
     int32_t   qp_index;
+    FrameHeader *frm_hdr = &picture_control_set_ptr->parent_pcs_ptr->frm_hdr;
 
     // LCU Loop
     if (sequence_control_set_ptr->static_config.rate_control_mode > 0) {
@@ -128,7 +137,7 @@ void update_rc_rate_tables(
         {
             eb_block_on_mutex(encode_context_ptr->rate_table_update_mutex);
 
-            uint64_t ref_qindex_dequant = (uint64_t)picture_control_set_ptr->parent_pcs_ptr->deq.y_dequant_QTX[picture_control_set_ptr->parent_pcs_ptr->base_qindex][1];
+            uint64_t ref_qindex_dequant = (uint64_t)picture_control_set_ptr->parent_pcs_ptr->deq.y_dequant_QTX[frm_hdr->quantization_params.base_q_idx][1];
             uint64_t sad_bits_ref_dequant = 0;
             uint64_t weight = 0;
             {
@@ -237,6 +246,8 @@ void* packetization_kernel(void *input_ptr)
     // Config
     SequenceControlSet           *sequence_control_set_ptr;
 
+    FrameHeader                  *frm_hdr;
+
     // Encoding Context
     EncodeContext                *encode_context_ptr;
 
@@ -249,7 +260,10 @@ void* packetization_kernel(void *input_ptr)
     EbBufferHeaderType             *output_stream_ptr;
     EbObjectWrapper              *rateControlTasksWrapperPtr;
     RateControlTasks             *rateControlTasksPtr;
-
+#if ENABLE_CDF_UPDATE
+    EbObjectWrapper               *picture_manager_results_wrapper_ptr;
+    PictureDemuxResults           *picture_manager_results_ptr;
+#endif
     // Queue variables
     int32_t                         queueEntryIndex;
     PacketizationReorderEntry    *queueEntryPtr;
@@ -267,6 +281,7 @@ void* packetization_kernel(void *input_ptr)
         picture_control_set_ptr = (PictureControlSet*)entropyCodingResultsPtr->picture_control_set_wrapper_ptr->object_ptr;
         sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
         encode_context_ptr = (EncodeContext*)sequence_control_set_ptr->encode_context_ptr;
+        frm_hdr = &picture_control_set_ptr->parent_pcs_ptr->frm_hdr;
         //****************************************************
         // Input Entropy Results into Reordering Queue
         //****************************************************
@@ -309,14 +324,37 @@ void* packetization_kernel(void *input_ptr)
         rateControlTasksPtr = (RateControlTasks*)rateControlTasksWrapperPtr->object_ptr;
         rateControlTasksPtr->picture_control_set_wrapper_ptr = picture_control_set_ptr->picture_parent_control_set_wrapper_ptr;
         rateControlTasksPtr->task_type = RC_PACKETIZATION_FEEDBACK_RESULT;
+#if ENABLE_CDF_UPDATE
+        if (picture_control_set_ptr->parent_pcs_ptr->frame_end_cdf_update_mode &&
+            picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
+            picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr) {
 
-        // slice_type = picture_control_set_ptr->slice_type;
-            // Reset the bitstream before writing to it
+            eb_av1_reset_cdf_symbol_counters(picture_control_set_ptr->entropy_coder_ptr->fc);
+            ((EbReferenceObject*)picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr->object_ptr)->frame_context
+                = (*picture_control_set_ptr->entropy_coder_ptr->fc);
+
+            // Get Empty Results Object
+            eb_get_empty_object(
+                context_ptr->picture_manager_input_fifo_ptr,
+                &picture_manager_results_wrapper_ptr);
+
+            picture_manager_results_ptr = (PictureDemuxResults*)picture_manager_results_wrapper_ptr->object_ptr;
+            picture_manager_results_ptr->picture_number = picture_control_set_ptr->picture_number;
+            picture_manager_results_ptr->picture_type = EB_PIC_FEEDBACK;
+            picture_manager_results_ptr->sequence_control_set_wrapper_ptr = picture_control_set_ptr->sequence_control_set_wrapper_ptr;
+        }
+        else {
+            picture_manager_results_wrapper_ptr = EB_NULL;
+            (void)picture_manager_results_ptr;
+            (void)picture_manager_results_wrapper_ptr;
+        }
+#endif
+        // Reset the bitstream before writing to it
         reset_bitstream(
             picture_control_set_ptr->bitstream_ptr->output_bitstream_ptr);
 
         // Code the SPS
-        if (picture_control_set_ptr->parent_pcs_ptr->av1_frame_type == KEY_FRAME) {
+        if (frm_hdr->frame_type == KEY_FRAME) {
             encode_sps_av1(
                 picture_control_set_ptr->bitstream_ptr,
                 sequence_control_set_ptr);
@@ -363,7 +401,7 @@ void* packetization_kernel(void *input_ptr)
         update_rc_rate_tables(
             picture_control_set_ptr,
             sequence_control_set_ptr);
-        queueEntryPtr->av1_frame_type = picture_control_set_ptr->parent_pcs_ptr->av1_frame_type;
+        queueEntryPtr->frame_type = frm_hdr->frame_type;
         queueEntryPtr->poc = picture_control_set_ptr->picture_number;
         memcpy(&queueEntryPtr->av1_ref_signal, &picture_control_set_ptr->parent_pcs_ptr->av1_ref_signal, sizeof(Av1RpsNode));
 
@@ -373,9 +411,9 @@ void* packetization_kernel(void *input_ptr)
         queueEntryPtr->ref_poc_list1 = picture_control_set_ptr->parent_pcs_ptr->ref_pic_poc_array[REF_LIST_1][0];
         memcpy(queueEntryPtr->ref_poc_array, picture_control_set_ptr->parent_pcs_ptr->av1RefSignal.ref_poc_array, 7 * sizeof(uint64_t));
 #endif
-        queueEntryPtr->show_frame = picture_control_set_ptr->parent_pcs_ptr->show_frame;
+        queueEntryPtr->show_frame = frm_hdr->show_frame;
         queueEntryPtr->has_show_existing = picture_control_set_ptr->parent_pcs_ptr->has_show_existing;
-        queueEntryPtr->show_existing_loc = picture_control_set_ptr->parent_pcs_ptr->show_existing_loc;
+        queueEntryPtr->show_existing_frame = frm_hdr->show_existing_frame;
 
         //Store the output buffer in the Queue
         queueEntryPtr->output_stream_wrapper_ptr = output_stream_wrapper_ptr;
@@ -404,7 +442,16 @@ void* packetization_kernel(void *input_ptr)
 
         // Post Rate Control Taks
         eb_post_full_object(rateControlTasksWrapperPtr);
-
+#if ENABLE_CDF_UPDATE
+        if (picture_control_set_ptr->parent_pcs_ptr->frame_end_cdf_update_mode &&
+            picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag == EB_TRUE &&
+            picture_control_set_ptr->parent_pcs_ptr->reference_picture_wrapper_ptr)
+            // Post the Full Results Object
+            eb_post_full_object(picture_manager_results_wrapper_ptr);
+        else
+            // Since feedback is not set to PM, life count of is reduced here instead of PM
+            eb_release_object(picture_control_set_ptr->sequence_control_set_wrapper_ptr);
+#endif
         //Release the Parent PCS then the Child PCS
         eb_release_object(entropyCodingResultsPtr->picture_control_set_wrapper_ptr);//Child
 
@@ -454,7 +501,7 @@ void* packetization_kernel(void *input_ptr)
                 }
 
                 if (queueEntryPtr->has_show_existing) {
-                    if (context_ptr->disp_order_continuity_count == context_ptr->dpb_disp_order[queueEntryPtr->show_existing_loc])
+                    if (context_ptr->disp_order_continuity_count == context_ptr->dpb_disp_order[queueEntryPtr->show_existing_frame])
                         context_ptr->disp_order_continuity_count++;
                     else
                     {
@@ -470,7 +517,7 @@ void* packetization_kernel(void *input_ptr)
                     context_ptr->tot_shown_frames++;
 
                 //implement the GOP here - Serial dec order
-                if (queueEntryPtr->av1_frame_type == KEY_FRAME)
+                if (queueEntryPtr->frame_type == KEY_FRAME)
                 {
                     //reset the DPB on a Key frame
                     for (i = 0; i < 8; i++)
@@ -485,13 +532,13 @@ void* packetization_kernel(void *input_ptr)
                     int32_t LASTrefIdx = queueEntryPtr->av1_ref_signal.ref_dpb_index[0];
                     int32_t BWDrefIdx = queueEntryPtr->av1_ref_signal.ref_dpb_index[4];
 
-                    if (queueEntryPtr->av1_frame_type == INTER_FRAME)
+                    if (queueEntryPtr->frame_type == INTER_FRAME)
                     {
                         if (queueEntryPtr->has_show_existing)
                             SVT_LOG("%i (%i  %i)    %i  (%i  %i)   %c  showEx: %i   %i frames\n",
                             (int32_t)queueEntryPtr->picture_number, (int32_t)context_ptr->dpb_dec_order[LASTrefIdx], (int32_t)context_ptr->dpb_dec_order[BWDrefIdx],
                                 (int32_t)queueEntryPtr->poc, (int32_t)context_ptr->dpb_disp_order[LASTrefIdx], (int32_t)context_ptr->dpb_disp_order[BWDrefIdx],
-                                showTab[queueEntryPtr->show_frame], (int32_t)context_ptr->dpb_disp_order[queueEntryPtr->show_existing_loc], (int32_t)context_ptr->tot_shown_frames);
+                                showTab[queueEntryPtr->show_frame], (int32_t)context_ptr->dpb_disp_order[queueEntryPtr->show_existing_frame], (int32_t)context_ptr->tot_shown_frames);
                         else
                             SVT_LOG("%i (%i  %i)    %i  (%i  %i)   %c  %i frames\n",
                             (int32_t)queueEntryPtr->picture_number, (int32_t)context_ptr->dpb_dec_order[LASTrefIdx], (int32_t)context_ptr->dpb_dec_order[BWDrefIdx],
@@ -521,7 +568,7 @@ void* packetization_kernel(void *input_ptr)
                     {
                         if (queueEntryPtr->has_show_existing)
                             SVT_LOG("%i  %i  %c   showEx: %i ----INTRA---- %i frames \n", (int32_t)queueEntryPtr->picture_number, (int32_t)queueEntryPtr->poc,
-                                showTab[queueEntryPtr->show_frame], (int32_t)context_ptr->dpb_disp_order[queueEntryPtr->show_existing_loc], (int32_t)context_ptr->tot_shown_frames);
+                                showTab[queueEntryPtr->show_frame], (int32_t)context_ptr->dpb_disp_order[queueEntryPtr->show_existing_frame], (int32_t)context_ptr->tot_shown_frames);
                         else
                             printf("%i  %i  %c   ----INTRA---- %i frames\n", (int32_t)queueEntryPtr->picture_number, (int32_t)queueEntryPtr->poc,
                             (int32_t)showTab[queueEntryPtr->show_frame], (int32_t)context_ptr->tot_shown_frames);

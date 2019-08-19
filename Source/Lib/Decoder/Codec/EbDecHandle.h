@@ -49,6 +49,7 @@ typedef struct EbDecPicBuf {
     GlobalMotionParams  global_motion[REF_FRAMES];
 
     /* MV at 8x8 lvl */
+    TemporalMvRef       *mvs;
     /* seg map */
     /* order hint */
     /* film grain */
@@ -162,9 +163,9 @@ typedef struct EbDecHandle {
     /** Pointer to Picture manager structure **/
     void   *pv_pic_mgr;
 
-    // * 'remapped_ref_idx[i - 1]' maps reference type ‘i’ (range: LAST_FRAME ...
-    // EXTREF_FRAME) to a remapped index ‘j’ (in range: 0 ... REF_FRAMES - 1)
-    // * Later, 'cm->ref_frame_map[j]' maps the remapped index ‘j’ to a pointer to
+    // * 'remapped_ref_idx[i - 1]' maps reference type 'i' (range: LAST_FRAME ...
+    // EXTREF_FRAME) to a remapped index 'j' (in range: 0 ... REF_FRAMES - 1)
+    // * Later, 'cm->ref_frame_map[j]' maps the remapped index 'j' to a pointer to
     // the reference counted buffer structure RefCntBuffer, taken from the buffer
     // pool cm->buffer_pool->frame_bufs.
     //

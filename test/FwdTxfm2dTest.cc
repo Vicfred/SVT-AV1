@@ -73,20 +73,20 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
 
     void SetUp() override {
         input_test_ = reinterpret_cast<int16_t *>(
-            aom_memalign(32, MAX_TX_SQUARE * sizeof(int16_t)));
+            eb_aom_memalign(32, MAX_TX_SQUARE * sizeof(int16_t)));
         output_test_ = reinterpret_cast<int32_t *>(
-            aom_memalign(32, MAX_TX_SQUARE * sizeof(int32_t)));
+            eb_aom_memalign(32, MAX_TX_SQUARE * sizeof(int32_t)));
         input_ref_ = reinterpret_cast<double *>(
-            aom_memalign(32, MAX_TX_SQUARE * sizeof(double)));
+            eb_aom_memalign(32, MAX_TX_SQUARE * sizeof(double)));
         output_ref_ = reinterpret_cast<double *>(
-            aom_memalign(32, MAX_TX_SQUARE * sizeof(double)));
+            eb_aom_memalign(32, MAX_TX_SQUARE * sizeof(double)));
     }
 
     void TearDown() override {
-        aom_free(input_test_);
-        aom_free(output_test_);
-        aom_free(input_ref_);
-        aom_free(output_ref_);
+        eb_aom_free(input_test_);
+        eb_aom_free(output_test_);
+        eb_aom_free(input_ref_);
+        eb_aom_free(output_ref_);
         aom_clear_system_state();
     }
 
@@ -126,8 +126,8 @@ class AV1FwdTxfm2dTest : public ::testing::TestWithParam<FwdTxfm2dParam> {
             double test_max_error = 0;
             for (int ni = 0; ni < block_size; ++ni) {
                 test_max_error =
-                    max(test_max_error,
-                        fabs(output_test_[ni] - round(output_ref_[ni])));
+                    AOMMAX(test_max_error,
+                           fabs(output_test_[ni] - round(output_ref_[ni])));
             }
             test_max_error /= scale_factor_;
             ASSERT_GE(max_error_, test_max_error)

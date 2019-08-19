@@ -715,8 +715,8 @@ extern "C" {
 
     struct AV1Common;
     struct FrameContexts;
-    void av1_reset_cdf_symbol_counters(struct FrameContexts *fc);
-    void av1_default_coef_probs(struct FrameContexts *fc, int32_t base_qindex);
+    void eb_av1_reset_cdf_symbol_counters(struct FrameContexts *fc);
+    void eb_av1_default_coef_probs(struct FrameContexts *fc, int32_t base_qindex);
     void init_mode_probs(struct FrameContexts *fc);
 
     struct FrameContexts;
@@ -995,7 +995,7 @@ extern "C" {
 
         AomCdfProb inter_compound_mode_cdf[INTER_MODE_CONTEXTS]
             [CDF_SIZE(INTER_COMPOUND_MODES)];
-        AomCdfProb compound_type_cdf[BlockSizeS_ALL][CDF_SIZE(COMPOUND_TYPES - 1)];
+        AomCdfProb compound_type_cdf[BlockSizeS_ALL][CDF_SIZE(MASKED_COMPOUND_TYPES)];
         AomCdfProb wedge_idx_cdf[BlockSizeS_ALL][CDF_SIZE(16)];
         AomCdfProb interintra_cdf[BlockSize_GROUPS][CDF_SIZE(2)];
         AomCdfProb wedge_interintra_cdf[BlockSizeS_ALL][CDF_SIZE(2)];

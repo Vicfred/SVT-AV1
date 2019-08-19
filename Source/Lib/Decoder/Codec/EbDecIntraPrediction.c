@@ -27,15 +27,12 @@
 
 #include "EbSvtAv1Dec.h"
 #include "EbDecHandle.h"
+#include "EbDecParseHelper.h"
 
 #include "EbDecProcessFrame.h"
 
 extern PredictionMode get_uv_mode(UvPredictionMode mode);
 
-/*TODO: Remove replication and harmonize with encoder after data str. harmonization */
-static INLINE int32_t dec_is_inter_block(const ModeInfo_t *mbmi) {
-    return (mbmi->use_intrabc || (mbmi->ref_frame[0] > INTRA_FRAME));
-}
 /*TODO: Remove replication and harmonize with encoder after data str. harmonization */
 static int dec_is_smooth(const ModeInfo_t *mbmi, int32_t plane) {
     if (plane == 0) {
@@ -200,7 +197,7 @@ static INLINE cfl_subsample_lbd_fn cfl_subsampling_lbd(TxSize tx_size,
 //######...........Ending for CFL.................#####//
 
 //####...Wrapper funtion calling CFL leaf level functions...####//
-static INLINE CflAllowedType is_cfl_allowed(const PartitionInfo_t *xd,
+static INLINE CflAllowedType is_cfl_allowed_with_frame_header(const PartitionInfo_t *xd,
                                               EbColorConfig *cc,
                                               FrameHeader *fh )
 
@@ -235,7 +232,7 @@ void cfl_predict_block(PartitionInfo_t *xd, CflCtx *cfl_ctx, uint8_t *dst,
                        EbColorConfig *cc, FrameHeader *fh)
 {
     ModeInfo_t *mbmi = xd->mi;
-    CflAllowedType is_cfl_allowed_flag = is_cfl_allowed(xd, cc, fh);
+    CflAllowedType is_cfl_allowed_flag = is_cfl_allowed_with_frame_header(xd, cc, fh);
     assert(is_cfl_allowed_flag == CFL_ALLOWED);
     (void)is_cfl_allowed_flag;
 
@@ -247,13 +244,13 @@ void cfl_predict_block(PartitionInfo_t *xd, CflCtx *cfl_ctx, uint8_t *dst,
         CFL_BUF_SQUARE);
 
     if (cc->bit_depth != AOM_BITS_8) {
-        cfl_predict_hbd(cfl_ctx->recon_buf_q3, (uint16_t *)dst, dst_stride,
+        eb_cfl_predict_hbd(cfl_ctx->recon_buf_q3, (uint16_t *)dst, dst_stride,
             (uint16_t *)dst, dst_stride, alpha_q3, cc->bit_depth,
             tx_size_wide[tx_size], tx_size_high[tx_size]);
         return;
     }
 
-    cfl_predict_lbd(cfl_ctx->recon_buf_q3, dst, dst_stride, dst, dst_stride,
+    eb_cfl_predict_lbd(cfl_ctx->recon_buf_q3, dst, dst_stride, dst, dst_stride,
         alpha_q3, cc->bit_depth,
         tx_size_wide[tx_size], tx_size_high[tx_size]);
 }
@@ -462,7 +459,7 @@ static void decode_build_intra_predictors(
     }
 
       if (use_filter_intra) {
-          av1_filter_intra_predictor(dst, dst_stride, tx_size, above_row, left_col,
+          eb_av1_filter_intra_predictor(dst, dst_stride, tx_size, above_row, left_col,
                filter_intra_mode);
            return;
        }
@@ -484,13 +481,13 @@ static void decode_build_intra_predictors(
                     const int32_t strength =
                         intra_edge_filter_strength(txwpx, txhpx, p_angle - 90, filt_type);
                     const int32_t n_px = n_top_px + ab_le + (need_right ? txhpx : 0);
-                    av1_filter_intra_edge(above_row - ab_le, n_px, strength);
+                    eb_av1_filter_intra_edge(above_row - ab_le, n_px, strength);
                 }
                 if (need_left && n_left_px > 0) {
                     const int32_t strength = intra_edge_filter_strength(
                         txhpx, txwpx, p_angle - 180, filt_type);
                     const int32_t n_px = n_left_px + ab_le + (need_bottom ? txwpx : 0);
-                    av1_filter_intra_edge(left_col - ab_le, n_px, strength);
+                    eb_av1_filter_intra_edge(left_col - ab_le, n_px, strength);
                 }
             }
             upsample_above =
@@ -498,14 +495,14 @@ static void decode_build_intra_predictors(
             if (need_above && upsample_above) {
                 const int32_t n_px = txwpx + (need_right ? txhpx : 0);
 
-                av1_upsample_intra_edge(above_row, n_px);
+                eb_av1_upsample_intra_edge(above_row, n_px);
             }
             upsample_left =
                 use_intra_edge_upsample(txhpx, txwpx, p_angle - 180, filt_type);
             if (need_left && upsample_left) {
                 const int32_t n_px = txhpx + (need_bottom ? txwpx : 0);
 
-                av1_upsample_intra_edge(left_col, n_px);
+                eb_av1_upsample_intra_edge(left_col, n_px);
             }
         }
         dr_predictor(dst, dst_stride, tx_size, above_row, left_col, upsample_above,
@@ -583,7 +580,7 @@ static void decode_build_intra_predictors_high(
         else
             val = (n_left_px > 0) ? left_ref[0] : base - 1;
         for (i = 0; i < txhpx; ++i) {
-            aom_memset16(dst, val, txwpx);
+            eb_aom_memset16(dst, val, txwpx);
             dst += dst_stride;
         }
         return;
@@ -604,13 +601,13 @@ static void decode_build_intra_predictors_high(
                     left_col[i] = left_ref[i * ref_stride];
             }
             if (i < num_left_pixels_needed)
-                aom_memset16(&left_col[i], left_col[i - 1], num_left_pixels_needed - i);
+                eb_aom_memset16(&left_col[i], left_col[i - 1], num_left_pixels_needed - i);
         }
         else {
             if (n_top_px > 0)
-                aom_memset16(left_col, above_ref[0], num_left_pixels_needed);
+                eb_aom_memset16(left_col, above_ref[0], num_left_pixels_needed);
             else
-                aom_memset16(left_col, base + 1, num_left_pixels_needed);
+                eb_aom_memset16(left_col, base + 1, num_left_pixels_needed);
         }
     }
 
@@ -630,14 +627,14 @@ static void decode_build_intra_predictors_high(
                 i += n_topright_px;
             }
             if (i < num_top_pixels_needed)
-                aom_memset16(&above_row[i], above_row[i - 1],
+                eb_aom_memset16(&above_row[i], above_row[i - 1],
                     num_top_pixels_needed - i);
         }
         else {
             if (n_left_px > 0)
-                aom_memset16(above_row, left_ref[0], num_top_pixels_needed);
+                eb_aom_memset16(above_row, left_ref[0], num_top_pixels_needed);
             else
-                aom_memset16(above_row, base - 1, num_top_pixels_needed);
+                eb_aom_memset16(above_row, base - 1, num_top_pixels_needed);
         }
     }
 
@@ -674,14 +671,14 @@ static void decode_build_intra_predictors_high(
                     const int32_t strength =
                         intra_edge_filter_strength(txwpx, txhpx, p_angle - 90, filt_type);
                     const int32_t n_px = n_top_px + ab_le + (need_right ? txhpx : 0);
-                    av1_filter_intra_edge_high(above_row - ab_le, n_px, strength);
+                    eb_av1_filter_intra_edge_high(above_row - ab_le, n_px, strength);
                 }
                 if (need_left && n_left_px > 0) {
                     const int32_t strength = intra_edge_filter_strength(
                         txhpx, txwpx, p_angle - 180, filt_type);
                     const int32_t n_px = n_left_px + ab_le + (need_bottom ? txwpx : 0);
 
-                    av1_filter_intra_edge_high(left_col - ab_le, n_px, strength);
+                    eb_av1_filter_intra_edge_high(left_col - ab_le, n_px, strength);
                 }
             }
             upsample_above =
@@ -689,14 +686,14 @@ static void decode_build_intra_predictors_high(
             if (need_above && upsample_above) {
                 const int32_t n_px = txwpx + (need_right ? txhpx : 0);
                 //av1_upsample_intra_edge_high(above_row, n_px, bd);// AMIR : to be replaced by optimized code
-                av1_upsample_intra_edge_high_c(above_row, n_px, bd);
+                eb_av1_upsample_intra_edge_high_c(above_row, n_px, bd);
             }
             upsample_left =
                 use_intra_edge_upsample(txhpx, txwpx, p_angle - 180, filt_type);
             if (need_left && upsample_left) {
                 const int32_t n_px = txhpx + (need_bottom ? txwpx : 0);
                 //av1_upsample_intra_edge_high(left_col, n_px, bd);// AMIR: to be replaced by optimized code
-                av1_upsample_intra_edge_high_c(left_col, n_px, bd);
+                eb_av1_upsample_intra_edge_high_c(left_col, n_px, bd);
             }
         }
         highbd_dr_predictor(dst, dst_stride, tx_size, above_row, left_col,

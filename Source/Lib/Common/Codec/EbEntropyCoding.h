@@ -95,18 +95,18 @@ extern "C" {
     //**********************************************************************************************************//
     //onyxc_int.h
     static INLINE int32_t frame_is_intra_only(const PictureParentControlSet *const pcs_ptr) {
-        return pcs_ptr->av1_frame_type == KEY_FRAME || pcs_ptr->av1_frame_type == INTRA_ONLY_FRAME;
+        return pcs_ptr->frm_hdr.frame_type == KEY_FRAME || pcs_ptr->frm_hdr.frame_type == INTRA_ONLY_FRAME;
     }
 
     static INLINE int32_t frame_is_sframe(const PictureParentControlSet *pcs_ptr) {
-        return pcs_ptr->av1_frame_type == S_FRAME;
+        return pcs_ptr->frm_hdr.frame_type == S_FRAME;
     }
 
     // Returns 1 if this frame might allow mvs from some reference frame.
 
     static INLINE int32_t frame_might_allow_ref_frame_mvs(const PictureParentControlSet *pcs_ptr,
         SequenceControlSet    *scs_ptr) {
-        return !pcs_ptr->error_resilient_mode &&
+        return !pcs_ptr->frm_hdr.error_resilient_mode &&
             scs_ptr->seq_header.order_hint_info.enable_ref_frame_mvs &&
             scs_ptr->seq_header.order_hint_info.enable_order_hint && !frame_is_intra_only(pcs_ptr);
     }
@@ -114,7 +114,7 @@ extern "C" {
     // Returns 1 if this frame might use warped_motion
     static INLINE int32_t frame_might_allow_warped_motion(const PictureParentControlSet *pcs_ptr,
         SequenceControlSet    *scs_ptr) {
-        return !pcs_ptr->error_resilient_mode && !frame_is_intra_only(pcs_ptr) &&
+        return !pcs_ptr->frm_hdr.error_resilient_mode && !frame_is_intra_only(pcs_ptr) &&
             scs_ptr->static_config.enable_warped_motion;
     }
 
@@ -138,16 +138,16 @@ extern "C" {
         uint32_t bit_offset;
     };
 
-    int32_t aom_wb_is_byte_aligned(const struct AomWriteBitBuffer *wb);
-    uint32_t aom_wb_bytes_written(const struct AomWriteBitBuffer *wb);
+    int32_t eb_aom_wb_is_byte_aligned(const struct AomWriteBitBuffer *wb);
+    uint32_t eb_aom_wb_bytes_written(const struct AomWriteBitBuffer *wb);
 
-    void aom_wb_write_bit(struct AomWriteBitBuffer *wb, int32_t bit);
+    void eb_aom_wb_write_bit(struct AomWriteBitBuffer *wb, int32_t bit);
 
-    void aom_wb_overwrite_bit(struct AomWriteBitBuffer *wb, int32_t bit);
+    void eb_aom_wb_overwrite_bit(struct AomWriteBitBuffer *wb, int32_t bit);
 
-    void aom_wb_write_literal(struct AomWriteBitBuffer *wb, int32_t data, int32_t bits);
+    void eb_aom_wb_write_literal(struct AomWriteBitBuffer *wb, int32_t data, int32_t bits);
 
-    void aom_wb_write_inv_signed_literal(struct AomWriteBitBuffer *wb, int32_t data,
+    void eb_aom_wb_write_inv_signed_literal(struct AomWriteBitBuffer *wb, int32_t data,
         int32_t bits);
     //*******************************************************************************************//
     // bitstream.h
@@ -181,13 +181,13 @@ extern "C" {
         int16_t *const           txb_skip_ctx,
         int16_t *const           dc_sign_ctx);
 
-    extern int32_t av1_get_reference_mode_context(
+    extern int32_t eb_av1_get_reference_mode_context(
         uint32_t                  cu_origin_x,
         uint32_t                  cu_origin_y,
         NeighborArrayUnit    *mode_type_neighbor_array,
         NeighborArrayUnit    *inter_pred_dir_neighbor_array);
 
-    extern int32_t av1_get_comp_reference_type_context(
+    extern int32_t eb_av1_get_comp_reference_type_context(
         uint32_t                  cu_origin_x,
         uint32_t                  cu_origin_y,
         NeighborArrayUnit    *mode_type_neighbor_array,
@@ -211,51 +211,51 @@ extern "C" {
     // Returns a context number for the given MB prediction signal
     // Signal the first reference frame for a compound mode be either
     // GOLDEN/LAST3, or LAST/LAST2.
-    extern int32_t av1_get_pred_context_comp_ref_p(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_comp_ref_p(const MacroBlockD *xd);
 
     // Returns a context number for the given MB prediction signal
     // Signal the first reference frame for a compound mode be LAST,
     // conditioning on that it is known either LAST/LAST2.
-    extern int32_t av1_get_pred_context_comp_ref_p1(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_comp_ref_p1(const MacroBlockD *xd);
 
     // Returns a context number for the given MB prediction signal
     // Signal the first reference frame for a compound mode be GOLDEN,
     // conditioning on that it is known either GOLDEN or LAST3.
-    extern int32_t av1_get_pred_context_comp_ref_p2(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_comp_ref_p2(const MacroBlockD *xd);
 
     // Signal the 2nd reference frame for a compound mode be either
     // ALTREF, or ALTREF2/BWDREF.
-    extern int32_t av1_get_pred_context_comp_bwdref_p(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_comp_bwdref_p(const MacroBlockD *xd);
 
     // Signal the 2nd reference frame for a compound mode be either
     // ALTREF2 or BWDREF.
-    extern int32_t av1_get_pred_context_comp_bwdref_p1(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_comp_bwdref_p1(const MacroBlockD *xd);
     // == Context functions for single ref ==
     //
     // For the bit to signal whether the single reference is a forward reference
     // frame or a backward reference frame.
-    extern int32_t av1_get_pred_context_single_ref_p1(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_single_ref_p1(const MacroBlockD *xd);
 
     // For the bit to signal whether the single reference is ALTREF_FRAME or
     // non-ALTREF backward reference frame, knowing that it shall be either of
     // these 2 choices.
-    extern int32_t av1_get_pred_context_single_ref_p2(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_single_ref_p2(const MacroBlockD *xd);
 
     // For the bit to signal whether the single reference is LAST3/GOLDEN or
     // LAST2/LAST, knowing that it shall be either of these 2 choices.
-    extern int32_t av1_get_pred_context_single_ref_p3(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_single_ref_p3(const MacroBlockD *xd);
 
     // For the bit to signal whether the single reference is LAST2_FRAME or
     // LAST_FRAME, knowing that it shall be either of these 2 choices.
-    extern int32_t av1_get_pred_context_single_ref_p4(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_single_ref_p4(const MacroBlockD *xd);
 
     // For the bit to signal whether the single reference is GOLDEN_FRAME or
     // LAST3_FRAME, knowing that it shall be either of these 2 choices.
-    extern int32_t av1_get_pred_context_single_ref_p5(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_single_ref_p5(const MacroBlockD *xd);
 
     // For the bit to signal whether the single reference is ALTREF2_FRAME or
     // BWDREF_FRAME, knowing that it shall be either of these 2 choices.
-    extern int32_t av1_get_pred_context_single_ref_p6(const MacroBlockD *xd);
+    extern int32_t eb_av1_get_pred_context_single_ref_p6(const MacroBlockD *xd);
 
     extern EbErrorType write_frame_header_av1(
         Bitstream *bitstream_ptr,

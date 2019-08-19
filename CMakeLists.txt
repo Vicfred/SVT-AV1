@@ -74,7 +74,7 @@ set(flags_to_test
     -D_FORTIFY_SOURCE=2)
 if(NOT MSVC)
     list(INSERT flags_to_test 0 -Wall)
-        option(NATIVE "Build for native performance (march=native)" ON)
+        option(NATIVE "Build for native performance (march=native)")
         if(NATIVE)
         list(APPEND flags_to_test -march=native)
     endif()
@@ -155,6 +155,12 @@ if(COVERAGE AND NOT MSVC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+endif()
+
+include(CheckSymbolExists)
+check_symbol_exists("_mm512_extracti64x4_epi64" "immintrin.h" HAS_AVX512)
+if(NOT HAS_AVX512)
+    add_definitions(-DNON_AVX512_SUPPORT)
 endif()
 
 # Add Subdirectories

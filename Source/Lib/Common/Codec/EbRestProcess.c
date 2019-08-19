@@ -26,7 +26,7 @@
 void ReconOutput(
     PictureControlSet    *picture_control_set_ptr,
     SequenceControlSet   *sequence_control_set_ptr);
-void av1_loop_restoration_filter_frame(Yv12BufferConfig *frame,
+void eb_av1_loop_restoration_filter_frame(Yv12BufferConfig *frame,
     Av1Common *cm, int32_t optimized_lr);
 void CopyStatisticsToRefObject(
     PictureControlSet    *picture_control_set_ptr,
@@ -60,7 +60,7 @@ static void rest_context_dctor(EbPtr p)
     EB_DELETE(obj->temp_lf_recon_picture16bit_ptr);
     EB_DELETE(obj->trial_frame_rst);
     EB_DELETE(obj->org_rec_frame);
-    EB_FREE(obj->rst_tmpbuf);
+    EB_FREE_ALIGNED(obj->rst_tmpbuf);
 }
 
 /******************************************************
@@ -109,7 +109,7 @@ EbErrorType rest_context_ctor(
             eb_picture_buffer_desc_ctor,
             (EbPtr)&initData);
 
-         EB_MALLOC(context_ptr->rst_tmpbuf, RESTORATION_TMPBUF_SIZE);
+         EB_MALLOC_ALIGNED(context_ptr->rst_tmpbuf, RESTORATION_TMPBUF_SIZE);
     }
 
     EbPictureBufferDescInitData tempLfReconDescInitData;
@@ -205,6 +205,7 @@ void* rest_kernel(void *input_ptr)
     RestContext                            *context_ptr = (RestContext*)input_ptr;
     PictureControlSet                     *picture_control_set_ptr;
     SequenceControlSet                    *sequence_control_set_ptr;
+    FrameHeader                           *frm_hdr;
 
     //// Input
     EbObjectWrapper                       *cdef_results_wrapper_ptr;
@@ -226,11 +227,12 @@ void* rest_kernel(void *input_ptr)
         cdef_results_ptr = (CdefResults*)cdef_results_wrapper_ptr->object_ptr;
         picture_control_set_ptr = (PictureControlSet*)cdef_results_ptr->picture_control_set_wrapper_ptr->object_ptr;
         sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
+        frm_hdr = &picture_control_set_ptr->parent_pcs_ptr->frm_hdr;
         uint8_t lcuSizeLog2 = (uint8_t)Log2f(sequence_control_set_ptr->sb_size_pix);
         EbBool  is16bit = (EbBool)(sequence_control_set_ptr->static_config.encoder_bit_depth > EB_8BIT);
         Av1Common* cm = picture_control_set_ptr->parent_pcs_ptr->av1_cm;
 
-        if (sequence_control_set_ptr->seq_header.enable_restoration && picture_control_set_ptr->parent_pcs_ptr->allow_intrabc == 0)
+        if (sequence_control_set_ptr->seq_header.enable_restoration && frm_hdr->allow_intrabc == 0)
         {
             get_own_recon(sequence_control_set_ptr, picture_control_set_ptr, context_ptr, is16bit);
 
@@ -264,7 +266,7 @@ void* rest_kernel(void *input_ptr)
         picture_control_set_ptr->tot_seg_searched_rest++;
         if (picture_control_set_ptr->tot_seg_searched_rest == picture_control_set_ptr->rest_segments_total_count)
         {
-            if (sequence_control_set_ptr->seq_header.enable_restoration && picture_control_set_ptr->parent_pcs_ptr->allow_intrabc == 0) {
+            if (sequence_control_set_ptr->seq_header.enable_restoration && frm_hdr->allow_intrabc == 0) {
                 rest_finish_search(
                     picture_control_set_ptr->parent_pcs_ptr->av1x,
                     picture_control_set_ptr->parent_pcs_ptr->av1_cm);
@@ -273,7 +275,7 @@ void* rest_kernel(void *input_ptr)
                     cm->rst_info[1].frame_restoration_type != RESTORE_NONE ||
                     cm->rst_info[2].frame_restoration_type != RESTORE_NONE)
                 {
-                    av1_loop_restoration_filter_frame(
+                    eb_av1_loop_restoration_filter_frame(
                         cm->frame_to_show,
                         cm,
                         0);

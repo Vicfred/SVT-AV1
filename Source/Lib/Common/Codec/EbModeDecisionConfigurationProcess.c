@@ -273,7 +273,7 @@ static const int16_t ac_qlookup_12_Q3[QINDEX_RANGE] = {
     28143, 28687, 29247,
 };
 
-int16_t av1_dc_quant_Q3(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
+int16_t eb_av1_dc_quant_Q3(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
     switch (bit_depth) {
     case AOM_BITS_8: return dc_qlookup_Q3[clamp(qindex + delta, 0, MAXQ)];
     case AOM_BITS_10: return dc_qlookup_10_Q3[clamp(qindex + delta, 0, MAXQ)];
@@ -283,7 +283,7 @@ int16_t av1_dc_quant_Q3(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
         return -1;
     }
 }
-int16_t av1_ac_quant_Q3(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
+int16_t eb_av1_ac_quant_Q3(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
     switch (bit_depth) {
     case AOM_BITS_8: return ac_qlookup_Q3[clamp(qindex + delta, 0, MAXQ)];
     case AOM_BITS_10: return ac_qlookup_10_Q3[clamp(qindex + delta, 0, MAXQ)];
@@ -295,7 +295,7 @@ int16_t av1_ac_quant_Q3(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
 }
 
 static int32_t get_qzbin_factor(int32_t q, AomBitDepth bit_depth) {
-    const int32_t quant = av1_dc_quant_Q3(q, 0, bit_depth);
+    const int32_t quant = eb_av1_dc_quant_Q3(q, 0, bit_depth);
     switch (bit_depth) {
     case AOM_BITS_8: return q == 0 ? 64 : (quant < 148 ? 84 : 80);
     case AOM_BITS_10: return q == 0 ? 64 : (quant < 592 ? 84 : 80);
@@ -309,11 +309,11 @@ static int32_t get_qzbin_factor(int32_t q, AomBitDepth bit_depth) {
 // In AV1 TX, the coefficients are always scaled up a factor of 8 (3
 // bits), so QTX == Q3.
 
-int16_t av1_dc_quant_QTX(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
-    return av1_dc_quant_Q3(qindex, delta, bit_depth);
+int16_t eb_av1_dc_quant_QTX(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
+    return eb_av1_dc_quant_Q3(qindex, delta, bit_depth);
 }
-int16_t av1_ac_quant_QTX(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
-    return av1_ac_quant_Q3(qindex, delta, bit_depth);
+int16_t eb_av1_ac_quant_QTX(int32_t qindex, int32_t delta, AomBitDepth bit_depth) {
+    return eb_av1_ac_quant_Q3(qindex, delta, bit_depth);
 }
 
 static void invert_quant(int16_t *quant, int16_t *shift, int32_t d) {
@@ -387,34 +387,36 @@ void SetGlobalMotionField(
     //    picture_control_set_ptr->parent_pcs_ptr->global_motion[LAST_FRAME].wmmat[1]) *GM_TRANS_ONLY_DECODE_FACTOR;
 }
 
-void av1_set_quantizer(
+void eb_av1_set_quantizer(
     PictureParentControlSet                    *picture_control_set_ptr,
     int32_t q)
 {
     // quantizer has to be reinitialized with av1_init_quantizer() if any
     // delta_q changes.
-    picture_control_set_ptr->using_qmatrix = 0;
+    FrameHeader*frm_hdr = &picture_control_set_ptr->frm_hdr;
+
+    frm_hdr->quantization_params.using_qmatrix = 0;
     picture_control_set_ptr->min_qmlevel = 5;
     picture_control_set_ptr->max_qmlevel = 9;
 
-    picture_control_set_ptr->base_qindex = (uint16_t)AOMMAX(picture_control_set_ptr->delta_q_present_flag, q);
-    picture_control_set_ptr->y_dc_delta_q = 0;
-    picture_control_set_ptr->u_dc_delta_q = 0;
-    picture_control_set_ptr->u_ac_delta_q = 0;
-    picture_control_set_ptr->v_dc_delta_q = 0;
-    picture_control_set_ptr->v_ac_delta_q = 0;
-    picture_control_set_ptr->qm_y = aom_get_qmlevel(picture_control_set_ptr->base_qindex, picture_control_set_ptr->min_qmlevel, picture_control_set_ptr->max_qmlevel);
-    picture_control_set_ptr->qm_u = aom_get_qmlevel(picture_control_set_ptr->base_qindex + picture_control_set_ptr->u_ac_delta_q,
+    frm_hdr->quantization_params.base_q_idx = AOMMAX(frm_hdr->delta_q_params.delta_q_present, q);
+    frm_hdr->quantization_params.delta_q_y_dc = 0;
+    frm_hdr->quantization_params.delta_q_u_dc = 0;
+    frm_hdr->quantization_params.delta_q_u_ac = 0;
+    frm_hdr->quantization_params.delta_q_v_dc = 0;
+    frm_hdr->quantization_params.delta_q_v_ac = 0;
+    frm_hdr->quantization_params.qm_y = aom_get_qmlevel(frm_hdr->quantization_params.base_q_idx, picture_control_set_ptr->min_qmlevel, picture_control_set_ptr->max_qmlevel);
+    frm_hdr->quantization_params.qm_u = aom_get_qmlevel(frm_hdr->quantization_params.base_q_idx + frm_hdr->quantization_params.delta_q_u_ac,
         picture_control_set_ptr->min_qmlevel, picture_control_set_ptr->max_qmlevel);
 
     if (!picture_control_set_ptr->separate_uv_delta_q)
-        picture_control_set_ptr->qm_v = picture_control_set_ptr->qm_u;
+        frm_hdr->quantization_params.qm_v = frm_hdr->quantization_params.qm_u;
     else
-        picture_control_set_ptr->qm_v = aom_get_qmlevel(picture_control_set_ptr->base_qindex + picture_control_set_ptr->v_ac_delta_q,
+        frm_hdr->quantization_params.qm_v = aom_get_qmlevel(frm_hdr->quantization_params.base_q_idx + frm_hdr->quantization_params.delta_q_v_ac,
             picture_control_set_ptr->min_qmlevel, picture_control_set_ptr->max_qmlevel);
 }
 
-void av1_build_quantizer(
+void eb_av1_build_quantizer(
     AomBitDepth bit_depth,
     int32_t y_dc_delta_q,
     int32_t u_dc_delta_q,
@@ -433,11 +435,11 @@ void av1_build_quantizer(
         for (i = 0; i < 2; ++i) {
             int32_t qrounding_factor_fp = 64;
             // y quantizer setup with original coeff shift of Q3
-            quant_Q3 = i == 0 ? av1_dc_quant_Q3(q, y_dc_delta_q, bit_depth)
-                : av1_ac_quant_Q3(q, 0, bit_depth);
+            quant_Q3 = i == 0 ? eb_av1_dc_quant_Q3(q, y_dc_delta_q, bit_depth)
+                : eb_av1_ac_quant_Q3(q, 0, bit_depth);
             // y quantizer with TX scale
-            quant_QTX = i == 0 ? av1_dc_quant_QTX(q, y_dc_delta_q, bit_depth)
-                : av1_ac_quant_QTX(q, 0, bit_depth);
+            quant_QTX = i == 0 ? eb_av1_dc_quant_QTX(q, y_dc_delta_q, bit_depth)
+                : eb_av1_ac_quant_QTX(q, 0, bit_depth);
             invert_quant(&quants->y_quant[q][i], &quants->y_quant_shift[q][i],
                 quant_QTX);
             quants->y_quant_fp[q][i] = (int16_t)((1 << 16) / quant_QTX);
@@ -448,11 +450,11 @@ void av1_build_quantizer(
             deq->y_dequant_Q3[q][i] = (int16_t)quant_Q3;
 
             // u quantizer setup with original coeff shift of Q3
-            quant_Q3 = i == 0 ? av1_dc_quant_Q3(q, u_dc_delta_q, bit_depth)
-                : av1_ac_quant_Q3(q, u_ac_delta_q, bit_depth);
+            quant_Q3 = i == 0 ? eb_av1_dc_quant_Q3(q, u_dc_delta_q, bit_depth)
+                : eb_av1_ac_quant_Q3(q, u_ac_delta_q, bit_depth);
             // u quantizer with TX scale
-            quant_QTX = i == 0 ? av1_dc_quant_QTX(q, u_dc_delta_q, bit_depth)
-                : av1_ac_quant_QTX(q, u_ac_delta_q, bit_depth);
+            quant_QTX = i == 0 ? eb_av1_dc_quant_QTX(q, u_dc_delta_q, bit_depth)
+                : eb_av1_ac_quant_QTX(q, u_ac_delta_q, bit_depth);
             invert_quant(&quants->u_quant[q][i], &quants->u_quant_shift[q][i],
                 quant_QTX);
             quants->u_quant_fp[q][i] = (int16_t)((1 << 16) / quant_QTX);
@@ -463,11 +465,11 @@ void av1_build_quantizer(
             deq->u_dequant_Q3[q][i] = (int16_t)quant_Q3;
 
             // v quantizer setup with original coeff shift of Q3
-            quant_Q3 = i == 0 ? av1_dc_quant_Q3(q, v_dc_delta_q, bit_depth)
-                : av1_ac_quant_Q3(q, v_ac_delta_q, bit_depth);
+            quant_Q3 = i == 0 ? eb_av1_dc_quant_Q3(q, v_dc_delta_q, bit_depth)
+                : eb_av1_ac_quant_Q3(q, v_ac_delta_q, bit_depth);
             // v quantizer with TX scale
-            quant_QTX = i == 0 ? av1_dc_quant_QTX(q, v_dc_delta_q, bit_depth)
-                : av1_ac_quant_QTX(q, v_ac_delta_q, bit_depth);
+            quant_QTX = i == 0 ? eb_av1_dc_quant_QTX(q, v_dc_delta_q, bit_depth)
+                : eb_av1_ac_quant_QTX(q, v_ac_delta_q, bit_depth);
             invert_quant(&quants->v_quant[q][i], &quants->v_quant_shift[q][i],
                 quant_QTX);
             quants->v_quant_fp[q][i] = (int16_t)((1 << 16) / quant_QTX);
@@ -508,7 +510,7 @@ void av1_build_quantizer(
     }
 }
 
-void av1_qm_init(
+void eb_av1_qm_init(
     PictureParentControlSet                   *picture_control_set_ptr
 )
 {
@@ -1708,7 +1710,7 @@ void* mode_decision_configuration_kernel(void *input_ptr)
     ModeDecisionConfigurationContext         *context_ptr = (ModeDecisionConfigurationContext*)input_ptr;
     PictureControlSet                        *picture_control_set_ptr;
     SequenceControlSet                       *sequence_control_set_ptr;
-
+    FrameHeader                              *frm_hdr;
     // Input
     EbObjectWrapper                          *rateControlResultsWrapperPtr;
     RateControlResults                       *rateControlResultsPtr;
@@ -1727,6 +1729,8 @@ void* mode_decision_configuration_kernel(void *input_ptr)
         picture_control_set_ptr = (PictureControlSet*)rateControlResultsPtr->picture_control_set_wrapper_ptr->object_ptr;
         sequence_control_set_ptr = (SequenceControlSet*)picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr;
 
+        frm_hdr = &picture_control_set_ptr->parent_pcs_ptr->frm_hdr;
+
         // Mode Decision Configuration Kernel Signal(s) derivation
         signal_derivation_mode_decision_config_kernel_oq(
             sequence_control_set_ptr,
@@ -1736,7 +1740,7 @@ void* mode_decision_configuration_kernel(void *input_ptr)
         context_ptr->qp = picture_control_set_ptr->picture_qp;
 
         picture_control_set_ptr->parent_pcs_ptr->average_qp = 0;
-        picture_control_set_ptr->intra_coded_area           = 0;
+        picture_control_set_ptr->intra_coded_area = 0;
         // Compute picture and slice level chroma QP offsets
         SetSliceAndPictureChromaQpOffsets( // HT done
             picture_control_set_ptr);
@@ -1752,34 +1756,34 @@ void* mode_decision_configuration_kernel(void *input_ptr)
         SetGlobalMotionField(
             picture_control_set_ptr);
 
-        av1_qm_init(
+        eb_av1_qm_init(
             picture_control_set_ptr->parent_pcs_ptr);
 
         Quants *const quants = &picture_control_set_ptr->parent_pcs_ptr->quants;
         Dequants *const dequants = &picture_control_set_ptr->parent_pcs_ptr->deq;
 
-        av1_set_quantizer(
+        eb_av1_set_quantizer(
             picture_control_set_ptr->parent_pcs_ptr,
-            picture_control_set_ptr->parent_pcs_ptr->base_qindex);
-        av1_build_quantizer(
+            frm_hdr->quantization_params.base_q_idx);
+        eb_av1_build_quantizer(
             (AomBitDepth)sequence_control_set_ptr->static_config.encoder_bit_depth,
-            picture_control_set_ptr->parent_pcs_ptr->y_dc_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->u_dc_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->u_ac_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->v_dc_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->v_ac_delta_q,
+            frm_hdr->quantization_params.delta_q_y_dc,
+            frm_hdr->quantization_params.delta_q_u_dc,
+            frm_hdr->quantization_params.delta_q_u_ac,
+            frm_hdr->quantization_params.delta_q_v_dc,
+            frm_hdr->quantization_params.delta_q_v_ac,
             quants,
             dequants);
 
         Quants *const quantsMd = &picture_control_set_ptr->parent_pcs_ptr->quantsMd;
         Dequants *const dequantsMd = &picture_control_set_ptr->parent_pcs_ptr->deqMd;
-        av1_build_quantizer(
-            (AomBitDepth)8,
-            picture_control_set_ptr->parent_pcs_ptr->y_dc_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->u_dc_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->u_ac_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->v_dc_delta_q,
-            picture_control_set_ptr->parent_pcs_ptr->v_ac_delta_q,
+        eb_av1_build_quantizer(
+            picture_control_set_ptr->hbd_mode_decision ? AOM_BITS_10 : AOM_BITS_8,
+            frm_hdr->quantization_params.delta_q_y_dc,
+            frm_hdr->quantization_params.delta_q_u_dc,
+            frm_hdr->quantization_params.delta_q_u_ac,
+            frm_hdr->quantization_params.delta_q_v_dc,
+            frm_hdr->quantization_params.delta_q_v_ac,
             quantsMd,
             dequantsMd);
 
@@ -1791,7 +1795,7 @@ void* mode_decision_configuration_kernel(void *input_ptr)
         context_ptr->qp = picture_control_set_ptr->picture_qp;
 
         // QP Index
-        context_ptr->qp_index = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->base_qindex;
+        context_ptr->qp_index = (uint8_t)frm_hdr->quantization_params.base_q_idx;
 
         // Lambda Assignement
         uint32_t lambdaSse;
@@ -1802,9 +1806,17 @@ void* mode_decision_configuration_kernel(void *input_ptr)
             &lambdaSad,
             &lambdaSse,
             (uint8_t)picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr->bit_depth,
-            context_ptr->qp_index);
+            context_ptr->qp_index,
+            picture_control_set_ptr->hbd_mode_decision);
         context_ptr->lambda = (uint64_t)lambdaSad;
-
+#if ENABLE_CDF_UPDATE
+        md_rate_estimation_array = picture_control_set_ptr->md_rate_estimation_array;
+        // Reset MD rate Estimation table to initial values by copying from md_rate_estimation_array
+        if (context_ptr->is_md_rate_estimation_ptr_owner) {
+            EB_FREE_ARRAY(context_ptr->md_rate_estimation_ptr);
+            context_ptr->is_md_rate_estimation_ptr_owner = EB_FALSE;
+        }
+#else
         // Slice Type
         EB_SLICE slice_type =
             (picture_control_set_ptr->parent_pcs_ptr->idr_flag == EB_TRUE) ? I_SLICE :
@@ -1823,17 +1835,33 @@ void* mode_decision_configuration_kernel(void *input_ptr)
             EB_FREE_ARRAY(context_ptr->md_rate_estimation_ptr);
             context_ptr->is_md_rate_estimation_ptr_owner = EB_FALSE;
         }
+#endif
         context_ptr->md_rate_estimation_ptr = md_rate_estimation_array;
 
-        entropyCodingQp = picture_control_set_ptr->parent_pcs_ptr->base_qindex;
+        entropyCodingQp = frm_hdr->quantization_params.base_q_idx;
+#if ENABLE_CDF_UPDATE
+        if (picture_control_set_ptr->parent_pcs_ptr->frm_hdr.primary_ref_frame != PRIMARY_REF_NONE)
+            memcpy(picture_control_set_ptr->coeff_est_entropy_coder_ptr->fc, &picture_control_set_ptr->ref_frame_context[picture_control_set_ptr->parent_pcs_ptr->frm_hdr.primary_ref_frame], sizeof(FRAME_CONTEXT));
+        else
+            reset_entropy_coder(
+                sequence_control_set_ptr->encode_context_ptr,
+                picture_control_set_ptr->coeff_est_entropy_coder_ptr,
+                entropyCodingQp,
+                picture_control_set_ptr->slice_type);
 
+        // Initial Rate Estimatimation of the syntax elements
+        av1_estimate_syntax_rate(
+            md_rate_estimation_array,
+            picture_control_set_ptr->slice_type == I_SLICE ? EB_TRUE : EB_FALSE,
+            picture_control_set_ptr->coeff_est_entropy_coder_ptr->fc);
+#else
         // Reset CABAC Contexts
         reset_entropy_coder(
             sequence_control_set_ptr->encode_context_ptr,
             picture_control_set_ptr->coeff_est_entropy_coder_ptr,
             entropyCodingQp,
             picture_control_set_ptr->slice_type);
-
+#endif
         // Initial Rate Estimatimation of the syntax elements
         if (!md_rate_estimation_array->initialized)
             av1_estimate_syntax_rate(
@@ -1912,7 +1940,7 @@ void* mode_decision_configuration_kernel(void *input_ptr)
             picture_control_set_ptr->parent_pcs_ptr->average_qp = (uint8_t)picture_control_set_ptr->parent_pcs_ptr->picture_qp;
         }
 
-        if (picture_control_set_ptr->parent_pcs_ptr->allow_intrabc)
+        if (frm_hdr->allow_intrabc)
         {
             int i;
             int speed = 1;
@@ -2020,7 +2048,7 @@ void* mode_decision_configuration_kernel(void *input_ptr)
                 }
             }
 
-            av1_init3smotion_compensation(&picture_control_set_ptr->ss_cfg, picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr->stride_y);
+            eb_av1_init3smotion_compensation(&picture_control_set_ptr->ss_cfg, picture_control_set_ptr->parent_pcs_ptr->enhanced_picture_ptr->stride_y);
         }
 
         // Derive MD parameters

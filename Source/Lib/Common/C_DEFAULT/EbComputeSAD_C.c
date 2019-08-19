@@ -67,6 +67,77 @@ uint32_t fast_loop_nx_m_sad_kernel(
     return sad;
 }
 
+uint32_t sad_16b_kernel(
+    uint16_t  *src,                            // input parameter, source samples Ptr
+    uint32_t  src_stride,                      // input parameter, source stride
+    uint16_t  *ref,                            // input parameter, reference samples Ptr
+    uint32_t  ref_stride,                      // input parameter, reference stride
+    uint32_t  height,                         // input parameter, block height (M)
+    uint32_t  width)                          // input parameter, block width (N)
+{
+    uint32_t x, y;
+    uint32_t sad = 0;
+
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++)
+            sad += EB_ABS_DIFF(src[x], ref[x]);
+        src += src_stride;
+        ref += ref_stride;
+    }
+
+    return sad;
+}
+
+void sad_loop_kernel_sparse(
+    uint8_t *src,        // input parameter, source samples Ptr
+    uint32_t srcStride,  // input parameter, source stride
+    uint8_t *ref,        // input parameter, reference samples Ptr
+    uint32_t refStride,  // input parameter, reference stride
+    uint32_t height,     // input parameter, block height (M)
+    uint32_t width,      // input parameter, block width (N)
+    uint64_t *bestSad,
+    int16_t *xSearchCenter,
+    int16_t *ySearchCenter,
+    uint32_t srcStrideRaw,  // input parameter, source stride (no line skipping)
+    int16_t searchAreaWidth, int16_t searchAreaHeight) {
+    int16_t xSearchIndex;
+    int16_t ySearchIndex;
+
+    *bestSad = 0xffffff;
+
+    for (ySearchIndex = 0; ySearchIndex < searchAreaHeight; ySearchIndex++) {
+        for (xSearchIndex = 0; xSearchIndex < searchAreaWidth; xSearchIndex++) {
+            uint8_t doThisPoint = 0;
+            uint32_t group = (xSearchIndex / 8);
+            if ((group & 1) == (ySearchIndex & 1))
+                doThisPoint = 1;
+
+            if (doThisPoint) {
+                uint32_t x, y;
+                uint32_t sad = 0;
+
+                for (y = 0; y < height; y++) {
+                    for (x = 0; x < width; x++)
+                        sad +=
+                            EB_ABS_DIFF(src[y * srcStride + x],
+                                        ref[xSearchIndex + y * refStride + x]);
+                }
+
+                // Update results
+                if (sad < *bestSad) {
+                    *bestSad = sad;
+                    *xSearchCenter = xSearchIndex;
+                    *ySearchCenter = ySearchIndex;
+                }
+            }
+        }
+
+        ref += srcStrideRaw;
+    }
+
+    return;
+}
+
 void sad_loop_kernel(
     uint8_t  *src,                            // input parameter, source samples Ptr
     uint32_t  src_stride,                      // input parameter, source stride
@@ -130,20 +201,20 @@ static INLINE uint32_t sad_inline_c(const uint8_t *a, int a_stride,
 }
 
 #define sadMxN(m, n)                                                          \
-  uint32_t aom_sad##m##x##n##_c(const uint8_t *src, int src_stride,       \
+  uint32_t eb_aom_sad##m##x##n##_c(const uint8_t *src, int src_stride,       \
                                     const uint8_t *ref, int ref_stride) {     \
     return sad_inline_c(src, src_stride, ref, ref_stride, m, n);              \
   }
 
 // Calculate sad against 4 reference locations and store each in sad_array
 #define sadMxNx4D(m, n)                                                    \
-  void aom_sad##m##x##n##x4d_c(const uint8_t *src, int src_stride,         \
+  void eb_aom_sad##m##x##n##x4d_c(const uint8_t *src, int src_stride,         \
                                const uint8_t *const ref_array[],           \
                                int ref_stride, uint32_t *sad_array) {      \
     int i;                                                                 \
     for (i = 0; i < 4; ++i) {                                              \
       sad_array[i] =                                                       \
-          aom_sad##m##x##n##_c(src, src_stride, ref_array[i], ref_stride); \
+          eb_aom_sad##m##x##n##_c(src, src_stride, ref_array[i], ref_stride); \
     }                                                                      \
   }
 

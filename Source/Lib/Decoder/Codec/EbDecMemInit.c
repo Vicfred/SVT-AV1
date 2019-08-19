@@ -179,6 +179,9 @@ static EbErrorType init_master_frame_ctxt(EbDecHandle  *dec_handle_ptr) {
         EB_MALLOC_DEC(int8_t*, cur_frame_buf->cdef_strength,
             (num_sb * (seq_header->use_128x128_superblock ? 4 : 1) *
             sizeof(int8_t)), EB_N_PTR);
+        memset(cur_frame_buf->cdef_strength, -1, (num_sb *
+            (seq_header->use_128x128_superblock ? 4 : 1) *
+            sizeof(int8_t)));
 
         /* delta_lf allocation at SB level */
         EB_MALLOC_DEC(int32_t*, cur_frame_buf->delta_lf,
@@ -302,7 +305,7 @@ static EbErrorType init_dec_mod_ctxt(EbDecHandle  *dec_handle_ptr)
     EB_MALLOC_DEC(int32_t*, dec_mod_ctxt->sb_iquant_ptr, (1 << sb_size_log2) *
                   (1 << sb_size_log2) * sizeof(int32_t), EB_N_PTR);
 
-    av1_inverse_qm_init(&dec_handle_ptr->frame_header, &dec_handle_ptr->seq_header.color_config);
+    av1_inverse_qm_init(dec_handle_ptr);
 
     return return_error;
 }
