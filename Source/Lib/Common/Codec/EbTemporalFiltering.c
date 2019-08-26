@@ -1706,15 +1706,14 @@ void copy_pixels_with_origin(EbByte dst, int stride_dst,
 EbErrorType save_src_pic_buffers(PictureParentControlSet *picture_control_set_ptr_central){
 
     // allocate memory for the copy of the original enhanced buffer
-    EB_MALLOC(picture_control_set_ptr_central->save_enhanced_picture_ptr[C_Y],
-              picture_control_set_ptr_central->enhanced_picture_ptr->luma_size * sizeof(uint8_t));
-    EB_MALLOC(picture_control_set_ptr_central->save_enhanced_picture_ptr[C_U],
-              picture_control_set_ptr_central->enhanced_picture_ptr->chroma_size * sizeof(uint8_t));
-    EB_MALLOC(picture_control_set_ptr_central->save_enhanced_picture_ptr[C_V],
-              picture_control_set_ptr_central->enhanced_picture_ptr->chroma_size * sizeof(uint8_t));
+    EB_MALLOC_ARRAY(picture_control_set_ptr_central->save_enhanced_picture_ptr[C_Y],
+              picture_control_set_ptr_central->enhanced_picture_ptr->luma_size);
+    EB_MALLOC_ARRAY(picture_control_set_ptr_central->save_enhanced_picture_ptr[C_U],
+              picture_control_set_ptr_central->enhanced_picture_ptr->chroma_size);
+    EB_MALLOC_ARRAY(picture_control_set_ptr_central->save_enhanced_picture_ptr[C_V],
+              picture_control_set_ptr_central->enhanced_picture_ptr->chroma_size);
 
     // copy buffers
-
     // Y
     copy_pixels_with_origin(picture_control_set_ptr_central->save_enhanced_picture_ptr[C_Y],
                             picture_control_set_ptr_central->enhanced_picture_ptr->stride_y,

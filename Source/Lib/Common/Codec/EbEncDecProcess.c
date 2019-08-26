@@ -770,6 +770,12 @@ void psnr_calculations(
         picture_control_set_ptr->parent_pcs_ptr->luma_sse = (uint32_t)sseTotal[0];
         picture_control_set_ptr->parent_pcs_ptr->cb_sse = (uint32_t)sseTotal[1];
         picture_control_set_ptr->parent_pcs_ptr->cr_sse = (uint32_t)sseTotal[2];
+
+        if(picture_control_set_ptr->parent_pcs_ptr->temporal_filtering_on == EB_TRUE) {
+            EB_FREE_ARRAY(buffer_y);
+            EB_FREE_ARRAY(buffer_cb);
+            EB_FREE_ARRAY(buffer_cr);
+        }
     }
     else {
         EbPictureBufferDesc *recon_ptr;
