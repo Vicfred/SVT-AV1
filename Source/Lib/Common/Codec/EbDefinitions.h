@@ -57,6 +57,9 @@ extern "C" {
 #define COMP_MODE                         1 // Add inter-inter compound modes
 #define PREDICTIVE_ME                     1 // Perform ME search around MVP @ MD
 
+
+#define MFMV_SUPPORT                      1// Temporal mvp support. aka. MFMV
+
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC                         0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
 
@@ -2451,7 +2454,7 @@ typedef enum DownSamplingMethod
 //***Segments***
 #define EB_SEGMENT_MIN_COUNT                        1
 #define EB_SEGMENT_MAX_COUNT                        64
-
+#if !MFMV_SUPPORT // SVT-HEVC TMVP code
 //***TMVP***
 #define LOG_MV_COMPRESS_UNIT_SIZE                   4
 #define MAX_TMVP_CAND_PER_LCU                       (BLOCK_SIZE_64 >> LOG_MV_COMPRESS_UNIT_SIZE)*(BLOCK_SIZE_64 >> LOG_MV_COMPRESS_UNIT_SIZE)
@@ -2466,7 +2469,7 @@ typedef enum DownSamplingMethod
 #define MAX_MODE_DECISION_CATEGORY_NUM              6
 #define LOG_MAX_AMVP_MODE_DECISION_CANDIDATE_NUM    2
 #define MAX_AMVP_MODE_DECISION_CANDIDATE_NUM        (1 << LOG_MAX_AMVP_MODE_DECISION_CANDIDATE_NUM)
-
+#endif
 #define CU_MAX_COUNT                                85
 
 #define EB_EVENT_MAX_COUNT                          20
