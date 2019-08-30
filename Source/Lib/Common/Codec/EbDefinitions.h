@@ -57,12 +57,6 @@ extern "C" {
 #define COMP_MODE                         1 // Add inter-inter compound modes
 #define PREDICTIVE_ME                     1 // Perform ME search around MVP @ MD
 #define MD_STAGING                        1
-
-
-
-
-
-
 #define SC_SETTINGS_TUNING                1 // SC Settings Tuning
 
 //FOR DEBUGGING - Do not remove
