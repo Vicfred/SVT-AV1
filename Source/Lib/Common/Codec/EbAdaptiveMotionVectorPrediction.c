@@ -726,8 +726,11 @@ static int add_tpl_ref_mv(const Av1Common *cm, PictureControlSet *picture_contro
     IntMv this_refmv;
     get_mv_projection(&this_refmv.as_mv, prev_frame_mvs->mfmv0.as_mv,
         cur_offset_0, prev_frame_mvs->ref_frame_offset);
+#if MFMV_SUPPORT
+    lower_mv_precision(&this_refmv.as_mv, picture_control_set_ptr->parent_pcs_ptr->frm_hdr.allow_high_precision_mv, 0);
+#else
     lower_mv_precision(&this_refmv.as_mv, 0, 0);
-
+#endif
     if (rf[1] == NONE_FRAME) {
         if (blk_row == 0 && blk_col == 0) {
             if (abs(this_refmv.as_mv.row - gm_mv_candidates[0].as_mv.row) >= 16 ||
@@ -756,8 +759,11 @@ static int add_tpl_ref_mv(const Av1Common *cm, PictureControlSet *picture_contro
         IntMv comp_refmv;
         get_mv_projection(&comp_refmv.as_mv, prev_frame_mvs->mfmv0.as_mv,
             cur_offset_1, prev_frame_mvs->ref_frame_offset);
+#if MFMV_SUPPORT
+        lower_mv_precision(&comp_refmv.as_mv, picture_control_set_ptr->parent_pcs_ptr->frm_hdr.allow_high_precision_mv, 0);
+#else
         lower_mv_precision(&comp_refmv.as_mv, 0, 0);
-
+#endif
         if (blk_row == 0 && blk_col == 0) {
             if (abs(this_refmv.as_mv.row - gm_mv_candidates[0].as_mv.row) >= 16 ||
                 abs(this_refmv.as_mv.col - gm_mv_candidates[0].as_mv.col) >= 16 ||
