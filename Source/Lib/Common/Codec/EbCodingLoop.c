@@ -3863,11 +3863,7 @@ EB_EXTERN void av1_encode_pass(
                 }
 #if MFMV_SUPPORT
                 if (sequence_control_set_ptr->mfmv_enabled && picture_control_set_ptr->slice_type != I_SLICE && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag) {
-#if INCOMPLETE_SB_FIX
                     uint32_t mi_stride = picture_control_set_ptr->mi_stride;
-#else
-                    uint32_t mi_stride = picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_ptr->picture_width_in_sb*(BLOCK_SIZE_64 >> MI_SIZE_LOG2);
-#endif
                     int32_t mi_row = context_ptr->cu_origin_y >> MI_SIZE_LOG2;
                     int32_t mi_col = context_ptr->cu_origin_x >> MI_SIZE_LOG2;
                     const int32_t offset = mi_row * mi_stride + mi_col;
