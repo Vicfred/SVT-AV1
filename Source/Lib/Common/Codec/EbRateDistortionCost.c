@@ -1276,19 +1276,6 @@ uint32_t get_compound_mode_rate(
 }
 #endif
     #if II_COMP_FLAG
-static INLINE int is_interintra_allowed_bsize(const BlockSize bsize) {
-    return (bsize >= BLOCK_8X8) && (bsize <= BLOCK_32X32);
-}
-
-static INLINE int is_interintra_allowed_mode(const PredictionMode mode) {
-    return (mode >= SINGLE_INTER_MODE_START) && (mode < SINGLE_INTER_MODE_END);
-}
-
-static INLINE int is_interintra_allowed_ref(const MvReferenceFrame rf[2]) {
-    return (rf[0] > INTRA_FRAME) && (rf[1] <= INTRA_FRAME);
-}
-
-
 int is_interintra_wedge_used(BlockSize sb_type);
 int svt_is_interintra_allowed(
     uint8_t enable_inter_intra,
