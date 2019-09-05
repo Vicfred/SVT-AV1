@@ -14260,6 +14260,9 @@ extern "C" {
         MD_COMP_TYPE                            compound_types_to_try;
         uint8_t                                 compound_mode;
 #endif
+#if II_COMP_FLAG
+        uint8_t                              enable_inter_intra;
+#endif
     } PictureParentControlSet;
 
     typedef struct PictureControlSetInitData

@@ -1275,6 +1275,27 @@ uint32_t get_compound_mode_rate(
     return comp_rate;
 }
 #endif
+    #if II_COMP_FLAG
+static INLINE int is_interintra_allowed_bsize(const BlockSize bsize) {
+    return (bsize >= BLOCK_8X8) && (bsize <= BLOCK_32X32);
+}
+
+static INLINE int is_interintra_allowed_mode(const PredictionMode mode) {
+    return (mode >= SINGLE_INTER_MODE_START) && (mode < SINGLE_INTER_MODE_END);
+}
+
+static INLINE int is_interintra_allowed_ref(const MvReferenceFrame rf[2]) {
+    return (rf[0] > INTRA_FRAME) && (rf[1] <= INTRA_FRAME);
+}
+
+
+int is_interintra_wedge_used(BlockSize sb_type);
+int svt_is_interintra_allowed(
+    uint8_t enable_inter_intra,
+    BlockSize sb_type,
+    PredictionMode mode,
+    MvReferenceFrame ref_frame[2]);
+#endif
 uint64_t av1_inter_fast_cost(
     CodingUnit            *cu_ptr,
     ModeDecisionCandidate *candidate_ptr,
@@ -1494,7 +1515,39 @@ uint64_t av1_inter_fast_cost(
 
     // NM - To be added when the intrainter mode is adopted
     //  read_interintra_mode(is_compound)
+#if II_COMP_FLAG
+    if (md_pass > 0) {
 
+        //MbModeInfo *const mbmi = &cu_ptr->av1xd->mi[0]->mbmi;
+        // inter intra mode rate
+        if (picture_control_set_ptr->parent_pcs_ptr->frm_hdr.reference_mode != COMPOUND_REFERENCE &&
+            picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_ptr->seq_header.enable_interintra_compound &&
+            svt_is_interintra_allowed(picture_control_set_ptr->parent_pcs_ptr->enable_inter_intra,blk_geom->bsize, candidate_ptr->inter_mode, rf)/*is_interintra_allowed(mbmi)*/) {
+            const int interintra = candidate_ptr->is_interintra_used;//mbmi->ref_frame[1] == INTRA_FRAME;
+            const int bsize_group = size_group_lookup[blk_geom->bsize];
+
+            interModeBitsNum += candidate_ptr->md_rate_estimation_ptr->inter_intra_fac_bits[bsize_group][candidate_ptr->is_interintra_used];
+            //aom_write_symbol(ec_writer, cu_ptr->is_interintra_used, frameContext->interintra_cdf[bsize_group], 2);
+            if (interintra) {
+                interModeBitsNum += candidate_ptr->md_rate_estimation_ptr->inter_intra_mode_fac_bits[bsize_group][candidate_ptr->interintra_mode];
+                /*aom_write_symbol(ec_writer, cu_ptr->interintra_mode,
+                                    frameContext->interintra_mode_cdf[bsize_group],
+                                    INTERINTRA_MODES);*/
+                if (is_interintra_wedge_used(blk_geom->bsize)) {
+                    interModeBitsNum += candidate_ptr->md_rate_estimation_ptr->wedge_inter_intra_fac_bits[blk_geom->bsize][candidate_ptr->use_wedge_interintra];
+                    //aom_write_symbol(ec_writer, cu_ptr->use_wedge_interintra,
+                    //                frameContext->wedge_interintra_cdf[bsize], 2);
+                    if (candidate_ptr->use_wedge_interintra) {
+                        interModeBitsNum += candidate_ptr->md_rate_estimation_ptr->wedge_idx_fac_bits[blk_geom->bsize][candidate_ptr->interintra_wedge_index];
+
+                        //aom_write_symbol(ec_writer, cu_ptr->interintra_wedge_index,
+                        //                    frameContext->wedge_idx_cdf[bsize], 16);
+                    }
+                }
+            }
+        }
+    }
+#endif
     EbBool is_inter = inter_mode >= SINGLE_INTER_MODE_START && inter_mode < SINGLE_INTER_MODE_END;
     if (is_inter
         && frm_hdr->is_motion_mode_switchable
