@@ -58,12 +58,6 @@ static INLINE int is_interintra_allowed_ref(const MvReferenceFrame rf[2]) {
     return (rf[0] > INTRA_FRAME) && (rf[1] <= INTRA_FRAME);
 }
 
-static INLINE int is_interintra_allowed(const MbModeInfo *mbmi) {
-  return is_interintra_allowed_bsize(mbmi->sb_type) &&
-         is_interintra_allowed_mode(mbmi->mode) &&
-         is_interintra_allowed_ref(mbmi->ref_frame);
-}
-
 
 
 int svt_is_interintra_allowed(
