@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-#define II_COMP_FLAG 1 
+#define II_COMP_FLAG 1
 
 // Internal Marcos
 #define NON_AVX512_SUPPORT
@@ -145,7 +145,7 @@ enum {
 #if MD_STAGING // classes
 #if II_COMP_FLAG
 #define MAX_NFL                                  80
-#else 
+#else
 #define MAX_NFL                                   65
 #endif
 #define MAX_NFL_BUFF                              (MAX_NFL + CAND_CLASS_TOTAL)  //need one extra temp buffer for each fast loop call
