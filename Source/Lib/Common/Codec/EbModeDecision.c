@@ -281,7 +281,6 @@ void inter_intra_search(
     pred_desc.origin_x = pred_desc.origin_y = 0;
     pred_desc.stride_y = bwidth;
 
-    SequenceControlSet* sequence_control_set_ptr = ((SequenceControlSet*)(picture_control_set_ptr->sequence_control_set_wrapper_ptr->object_ptr));
     EbPictureBufferDesc  *ref_pic_list0;
     EbPictureBufferDesc  *ref_pic_list1 = NULL;
     Mv mv_0;
@@ -375,11 +374,8 @@ void inter_intra_search(
         0, //do chroma
         picture_control_set_ptr->parent_pcs_ptr->sequence_control_set_ptr->encode_context_ptr->asm_type);
 
+    assert(is_interintra_wedge_used(context_ptr->blk_geom->bsize));//if not I need to add nowedge path!!
 
-    const int is_wedge_used = is_interintra_wedge_used(context_ptr->blk_geom->bsize);
-    assert(is_wedge_used);//if not I need to add nowedge path!!
-
-    int64_t best_interintra_rd_wedge = INT64_MAX;
     int64_t rd = INT64_MAX;
     int64_t best_interintra_rd = INT64_MAX;
     int rmode = 0, rate_sum;
@@ -430,11 +426,7 @@ void inter_intra_search(
                     context_ptr->blk_geom->bsize,// plane_bsize,
                     ii_pred_buf, bwidth, /*uint8_t *comppred, int compstride,*/
                     tmp_buf, bwidth,  /*const uint8_t *interpred, int interstride,*/
-#if II_COMP_FLAG
                     context_ptr->intrapred_buf[j], bwidth /*const uint8_t *intrapred,   int intrastride*/);
-#else
-                    intrapred, bwidth /*const uint8_t *intrapred,   int intrastride*/);
-#endif
 
                 //model_rd_sb_fn[MODELRD_TYPE_INTERINTRA](
                 //    cpi, bsize, x, xd, 0, 0, mi_row, mi_col, &rate_sum, &dist_sum,
@@ -452,22 +444,12 @@ void inter_intra_search(
                 }
             }
 
-
-#if !  II_COMP_FLAG
-            intra_luma_prediction_for_interintra(
-                context_ptr,
-                picture_control_set_ptr,
-                best_interintra_mode,
-                &inra_pred_desc);
-#endif
-
-
             /* best_interintra_rd_wedge =
                  pick_interintra_wedge(cpi, x, bsize, intrapred_, tmp_buf_);*/
 
             //CHKN need to re-do intra pred using the winner, or have a separate intra serch for wedge
 
-            best_interintra_rd_wedge = pick_interintra_wedge(
+            pick_interintra_wedge(
                 candidate_ptr,
                 picture_control_set_ptr,
                 context_ptr,
@@ -550,7 +532,6 @@ void inter_intra_search(
 
                 rd = RDCOST(context_ptr->full_lambda, tmp_rate_mv + rate_sum + rmode, dist_sum);
                 if (rd < best_interintra_rd) {
-                    best_interintra_rd_wedge = rd;
                     best_interintra_mode = interintra_mode;
 
                     //CHKN added this as fix from lib-aom
@@ -1088,9 +1069,9 @@ void Unipred3x3CandidatesInjection(
         uint8_t to_inject_ref_type = svt_get_ref_frame_type(REF_LIST_0, list0_ref_index);
         if (context_ptr->injected_mv_count_l0 == 0 || mrp_is_already_injected_mv_l0(context_ptr, to_inject_mv_x, to_inject_mv_y, to_inject_ref_type) == EB_FALSE) {
 #if II_COMP_FLAG // 3x3  L0
-             MvReferenceFrame rf[2];
-             rf[0] = to_inject_ref_type;
-             rf[1] = -1;
+             //MvReferenceFrame rf[2];
+             //rf[0] = to_inject_ref_type;
+             //rf[1] = -1;
 
              uint8_t ii_type;
              uint8_t is_ii_allowed = 0;//svt_is_interintra_allowed(picture_control_set_ptr->parent_pcs_ptr->enable_inter_intra, bsize, NEWMV, rf);
@@ -1210,9 +1191,9 @@ void Unipred3x3CandidatesInjection(
             uint8_t to_inject_ref_type = svt_get_ref_frame_type(REF_LIST_1, list1_ref_index);
             if (context_ptr->injected_mv_count_l1 == 0 || mrp_is_already_injected_mv_l1(context_ptr, to_inject_mv_x, to_inject_mv_y, to_inject_ref_type) == EB_FALSE) {
 #if II_COMP_FLAG // 3x3  L1
-             MvReferenceFrame rf[2];
-             rf[0] = to_inject_ref_type;
-             rf[1] = -1;
+             //MvReferenceFrame rf[2];
+             //rf[0] = to_inject_ref_type;
+             //rf[1] = -1;
              uint8_t ii_type;
              uint8_t is_ii_allowed = 0;//svt_is_interintra_allowed(picture_control_set_ptr->parent_pcs_ptr->enable_inter_intra, bsize, NEWMV, rf);
              uint8_t tot_ii_types = is_ii_allowed ? II_COUNT : 1;
