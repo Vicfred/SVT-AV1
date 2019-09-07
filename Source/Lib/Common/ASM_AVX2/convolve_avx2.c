@@ -2056,8 +2056,8 @@ static INLINE __m256i blend_32_u8_avx2(const uint8_t *src0, const uint8_t *src1,
       _mm256_maddubs_epi16(_mm256_unpackhi_epi8(v_s0_b, v_s1_b),
                            _mm256_unpackhi_epi8(*v_m0_b, *v_m1_b));
 
-  const __m256i v_res0_w = _mm256_avg_epu16(_mm256_srli_epi16(v_p0_w, bits - 1), _mm256_setzero_si256());
-  const __m256i v_res1_w = _mm256_avg_epu16(_mm256_srli_epi16(v_p1_w, bits - 1), _mm256_setzero_si256());
+  const __m256i v_res0_w = /*yy_roundn_epu16(v_p0_w, bits);*/  _mm256_avg_epu16(_mm256_srli_epi16(v_p0_w, bits - 1), _mm256_setzero_si256());
+  const __m256i v_res1_w = /*yy_roundn_epu16(v_p1_w, bits);*/  _mm256_avg_epu16(_mm256_srli_epi16(v_p1_w, bits - 1), _mm256_setzero_si256());
   const __m256i v_res = _mm256_packus_epi16(v_res0_w, v_res1_w);
   return v_res;
 }
@@ -2074,7 +2074,7 @@ static INLINE __m256i blend_16_u8_avx2(const uint8_t *src0, const uint8_t *src1,
       _mm256_maddubs_epi16(_mm256_unpacklo_epi8(v_s0_s_b, v_s1_s_b),
                            _mm256_unpacklo_epi8(*v_m0_b, *v_m1_b));
 
-  const __m256i v_res0_w = _mm256_avg_epu16(_mm256_srli_epi16(v_p0_w, bits - 1), _mm256_setzero_si256());
+  const __m256i v_res0_w = /*yy_roundn_epu16(v_p0_w, bits);*/ _mm256_avg_epu16(_mm256_srli_epi16(v_p0_w, bits - 1), _mm256_setzero_si256());
   const __m256i v_res_b = _mm256_packus_epi16(v_res0_w, v_res0_w);
   const __m256i v_res = _mm256_permute4x64_epi64(v_res_b, 0xd8);
   return v_res;
@@ -2117,7 +2117,7 @@ static INLINE void blend_a64_mask_sx_sy_w16_avx2(
         _mm256_and_si256(_mm256_srli_si256(v_rvsl_b, 1), v_zmask_b);
     const __m256i v_rsl_w = _mm256_add_epi16(v_rvsal_w, v_rvsbl_w);
 
-    const __m256i v_m0_w = _mm256_avg_epu16(_mm256_srli_epi16(v_rsl_w, 2 - 1), _mm256_setzero_si256());
+    const __m256i v_m0_w = /*yy_roundn_epu16(v_rsl_w, 2);*/ _mm256_avg_epu16(_mm256_srli_epi16(v_rsl_w, 2 - 1), _mm256_setzero_si256());
     const __m256i v_m0_b = _mm256_packus_epi16(v_m0_w, v_m0_w);
     const __m256i v_m1_b = _mm256_sub_epi8(v_maxval_b, v_m0_b);
 
@@ -2156,8 +2156,8 @@ static INLINE void blend_a64_mask_sx_sy_w32n_avx2(
       const __m256i v_rsl_w = _mm256_add_epi16(v_rvsal_w, v_rvsbl_w);
       const __m256i v_rsh_w = _mm256_add_epi16(v_rvsah_w, v_rvsbh_w);
 
-      const __m256i v_m0l_w = _mm256_avg_epu16(_mm256_srli_epi16(v_rsl_w, 2 - 1), _mm256_setzero_si256());
-      const __m256i v_m0h_w = _mm256_avg_epu16(_mm256_srli_epi16(v_rsh_w, 2 - 1), _mm256_setzero_si256());
+      const __m256i v_m0l_w =/* yy_roundn_epu16(v_rsl_w, 2); */_mm256_avg_epu16(_mm256_srli_epi16(v_rsl_w, 2 - 1), _mm256_setzero_si256());
+      const __m256i v_m0h_w =/* yy_roundn_epu16(v_rsh_w, 2); */_mm256_avg_epu16(_mm256_srli_epi16(v_rsh_w, 2 - 1), _mm256_setzero_si256());
       const __m256i v_m0_b =
           _mm256_permute4x64_epi64(_mm256_packus_epi16(v_m0l_w, v_m0h_w), 0xd8);
       const __m256i v_m1_b = _mm256_sub_epi8(v_maxval_b, v_m0_b);
