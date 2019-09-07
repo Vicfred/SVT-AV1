@@ -6367,7 +6367,7 @@ assert(bsize < BlockSizeS_ALL);
                     }
 
 
-                  const int interintra = cu_ptr->is_interintra_used;//mbmi->ref_frame[1] == INTRA_FRAME;
+                  const int interintra = cu_ptr->is_interintra_used;
                   const int bsize_group = size_group_lookup[bsize];
                   aom_write_symbol(ec_writer, cu_ptr->is_interintra_used, frameContext->interintra_cdf[bsize_group], 2);
                   if (interintra) {

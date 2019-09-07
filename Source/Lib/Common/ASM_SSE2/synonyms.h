@@ -102,14 +102,6 @@ static INLINE __m128i xx_roundn_epi16(__m128i v_val_d, int32_t bits) {
         _mm_add_epi16(_mm_add_epi16(v_val_d, v_bias_d), v_sign_d);
     return _mm_srai_epi16(v_tmp_d, bits);
 }
-
-//#if II_COMP_FLAG
-//static INLINE __m256i yy_roundn_epu16(__m256i v_val_w, int bits) {
-//  const __m256i v_s_w = _mm256_srli_epi16(v_val_w, bits - 1);
-//  return _mm256_avg_epu16(v_s_w, _mm256_setzero_si256());
-//}
-//
-//#endif
 // Note:
 // _mm256_insert_epi16 intrinsics is available from vs2017.
 // We define this macro for vs2015 and earlier. The
