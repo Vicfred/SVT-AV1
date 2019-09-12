@@ -28,15 +28,6 @@
 #define UNLIKELY(v) (v)
 #endif
 #endif
-void eb_av1_convolve_y_sr_avx2(const uint8_t *src, int32_t src_stride, uint8_t *dst,
-    int32_t dst_stride, int32_t w, int32_t h,
-    InterpFilterParams *filter_params_x,
-    InterpFilterParams *filter_params_y,
-    const int32_t subpel_x_q4, const int32_t subpel_y_q4,
-    ConvolveParams *conv_params) {
-    int32_t i, j;
-    const int32_t fo_vert = filter_params_y->taps / 2 - 1;
-    const uint8_t *const src_ptr = src - fo_vert * src_stride;
 
 SIMD_INLINE __m128i convolve_x_round_sse2(const __m128i src) {
     const __m128i round = _mm_set1_epi16(34);
