@@ -312,8 +312,22 @@ extern "C" {
     EbBool                              md_staging_skip_full_chroma;
     EbBool                              md_staging_skip_rdoq;
 #endif
+
 #if II_COMP_FLAG
-   DECLARE_ALIGNED(16, uint8_t,                            intrapred_buf[INTERINTRA_MODES][32 * 32]); //MAX block size for inter intra is 32x32
+   DECLARE_ALIGNED(16, uint8_t,        intrapred_buf[INTERINTRA_MODES][32 * 32]); //MAX block size for inter intra is 32x32
+#endif
+#if PRUNE_REF_FRAME_FRO_REC_PARTITION
+    uint64_t                           *ref_best_cost_sq_table;
+    uint32_t                           *ref_best_ref_sq_table;
+#endif
+#if EDGE_BASED_SKIP_ANGULAR_INTRA
+    uint8_t                             edge_based_skip_angle_intra;
+#endif
+#if COEFF_BASED_SKIP_ATB
+    EbBool                              coeff_based_skip_atb;
+#endif
+#if PRUNE_REF_FRAME_FRO_REC_PARTITION
+    uint8_t                             prune_ref_frame_for_rec_partitions;
 #endif
     } ModeDecisionContext;
 
@@ -391,10 +405,14 @@ extern "C" {
 
     extern void mode_decision_configure_lcu(
         ModeDecisionContext   *context_ptr,
+#if !QPM
         LargestCodingUnit     *sb_ptr,
+#endif
         PictureControlSet     *picture_control_set_ptr,
+#if !QPM
         SequenceControlSet    *sequence_control_set_ptr,
         uint8_t                  picture_qp,
+#endif
         uint8_t                  sb_qp);
 
     extern void cfl_rd_pick_alpha(

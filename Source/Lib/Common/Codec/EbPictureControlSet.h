@@ -13763,8 +13763,10 @@ extern "C" {
         uint16_t                              qp_array_stride;
         uint32_t                              qp_array_size;
         // QP Assignment
+#if !QPM
         uint8_t                               prev_coded_qp;
         uint8_t                               prev_quant_group_coded_qp;
+#endif
         // EncDec Entropy Coder (for rate estimation)
         EntropyCoder                       *coeff_est_entropy_coder_ptr;
 
@@ -13864,6 +13866,10 @@ extern "C" {
         FRAME_CONTEXT           ref_frame_context[REF_FRAMES];
         EbWarpedMotionParams    ref_global_motion[TOTAL_REFS_PER_FRAME];
         struct MdRateEstimationContext *md_rate_estimation_array;
+#endif
+#if MFMV_SUPPORT
+        int8_t ref_frame_side[REF_FRAMES];
+        TPL_MV_REF  *tpl_mvs;
 #endif
     } PictureControlSet;
 
@@ -14036,7 +14042,10 @@ extern "C" {
         uint8_t                              *sharp_edge_sb_flag;
         EbBool                                logo_pic_flag;                    // used by EncDecProcess()
         uint16_t                              non_moving_index_average;            // used by ModeDecisionConfigurationProcess()
-
+#if QPM
+        int16_t                               non_moving_index_min_distance;
+        int16_t                               non_moving_index_max_distance;
+#endif
         uint16_t                              qp_scaling_average_complexity;
         uint8_t                               grass_percentage_in_picture;
         uint8_t                               percentage_of_edgein_light_background;
@@ -14166,7 +14175,7 @@ extern "C" {
 #if ADD_DELTA_QP_SUPPORT
         // Resolution of delta quant
         int32_t                               num_tg;
-        int32_t                               monochrome = 0; //NM - hadcoded to zero. to be set to one to support the coding of monochrome contents.
+        int32_t                               monochrome;
         int32_t                               prev_qindex;
         // Since actual frame level loop filtering level value is not available
         // at the beginning of the tile (only available during actual filtering)
@@ -14257,8 +14266,14 @@ extern "C" {
 #endif
         FrameHeader                           frm_hdr;
 #if COMP_MODE
-        MD_COMP_TYPE                            compound_types_to_try;
-        uint8_t                                 compound_mode;
+        MD_COMP_TYPE                          compound_types_to_try;
+        uint8_t                               compound_mode;
+#endif
+#if PRUNE_REF_FRAME_AT_ME
+        uint8_t                               prune_unipred_at_me;
+#endif
+#if COEFF_BASED_SKIP_ATB
+        uint8_t                              coeff_based_skip_atb;
 #endif
 #if II_COMP_FLAG
         uint8_t                              enable_inter_intra;
@@ -14295,6 +14310,9 @@ extern "C" {
         uint8_t                            nsq_present;
 #if INCOMPLETE_SB_FIX
         uint8_t                            over_boundary_block_mode;
+#endif
+#if MFMV_SUPPORT
+        uint8_t                            mfmv;
 #endif
     } PictureControlSetInitData;
 

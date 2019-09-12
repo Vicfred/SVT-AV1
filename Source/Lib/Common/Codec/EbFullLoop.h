@@ -54,7 +54,7 @@ extern "C" {
         ModeDecisionContext          *context_ptr,
         PictureControlSet            *picture_control_set_ptr);
 
-    void inv_transform_recon_copy(
+    void inv_transform_recon_wrapper(
         uint8_t    *pred_buffer,
         uint32_t    pred_offset,
         uint32_t    pred_stride,
@@ -63,8 +63,6 @@ extern "C" {
         uint32_t    rec_stride,
         int32_t    *rec_coeff_buffer,
         uint32_t    coeff_offset,
-        uint32_t    width,
-        uint32_t    height,
         EbBool      hbd,
         TxSize      txsize,
         TxType      transform_type,
@@ -82,6 +80,16 @@ extern "C" {
         MdRateEstimationContext      *md_rate_estimation_ptr,
         PictureControlSet            *picture_control_set_ptr);
 
+#if MD_EXIT
+    // compute the cost of curr depth, and the depth above
+    extern void  compute_depth_costs_md_skip(
+        ModeDecisionContext *context_ptr,
+        SequenceControlSet  *sequence_control_set_ptr,
+        uint32_t             above_depth_mds,
+        uint32_t             step,
+        uint64_t            *above_depth_cost,
+        uint64_t            *curr_depth_cost);
+#endif
     void  d1_non_square_block_decision(
         ModeDecisionContext               *context_ptr
     );

@@ -947,12 +947,16 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         inputData.top_padding = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->top_padding;
         inputData.bot_padding = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->bot_padding;
         inputData.bit_depth = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->encoder_bit_depth;
+        inputData.film_grain_noise_level = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->film_grain_denoise_strength;
         inputData.color_format = color_format;
         inputData.sb_sz = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->sb_sz;
         inputData.sb_size_pix = scs_init.sb_size;
         inputData.max_depth = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->max_sb_depth;
         inputData.hbd_mode_decision = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->static_config.enable_hbd_mode_decision;
         inputData.cdf_mode = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->cdf_mode;
+#if MFMV_SUPPORT
+        inputData.mfmv = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->mfmv_enabled;
+#endif
         EB_NEW(
             enc_handle_ptr->picture_control_set_pool_ptr_array[instance_index],
             eb_system_resource_ctor,
@@ -1007,6 +1011,9 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
         referencePictureBufferDescInitData.right_padding = PAD_VALUE;
         referencePictureBufferDescInitData.top_padding = PAD_VALUE;
         referencePictureBufferDescInitData.bot_padding = PAD_VALUE;
+#if MFMV_SUPPORT
+        referencePictureBufferDescInitData.mfmv = enc_handle_ptr->sequence_control_set_instance_array[instance_index]->sequence_control_set_ptr->mfmv_enabled;
+#endif
         // Hsan: split_mode is set @ eb_reference_object_ctor() as both unpacked reference and packed reference are needed for a 10BIT input; unpacked reference @ MD, and packed reference @ EP
 
         if (is16bit)
@@ -1468,6 +1475,7 @@ EB_API EbErrorType eb_init_encoder(EbComponentType *svt_enc_component)
 
     for (processIndex = 0; processIndex < enc_handle_ptr->sequence_control_set_instance_array[0]->sequence_control_set_ptr->picture_analysis_process_init_count; ++processIndex) {
         EbPictureBufferDescInitData  pictureBufferDescConf;
+        pictureBufferDescConf.color_format = color_format;
         pictureBufferDescConf.max_width = enc_handle_ptr->sequence_control_set_instance_array[0]->sequence_control_set_ptr->max_input_luma_width;
         pictureBufferDescConf.max_height = enc_handle_ptr->sequence_control_set_instance_array[0]->sequence_control_set_ptr->max_input_luma_height;
         pictureBufferDescConf.bit_depth = EB_8BIT;
@@ -1879,8 +1887,12 @@ void SetDefaultConfigurationParameters(
     sequence_control_set_ptr->cropping_top_offset = 0;
     sequence_control_set_ptr->cropping_bottom_offset = 0;
 
+#if QPM
+    sequence_control_set_ptr->static_config.enable_adaptive_quantization = 2;
+#else
     //Segmentation
     sequence_control_set_ptr->static_config.enable_adaptive_quantization = 0;
+#endif
 
     return;
 }
@@ -2011,6 +2023,9 @@ void SetParamBasedOnInput(SequenceControlSet *sequence_control_set_ptr)
         sequence_control_set_ptr->over_boundary_block_mode = 1;
     else
         sequence_control_set_ptr->over_boundary_block_mode = 0;
+#endif
+#if MFMV_SUPPORT
+    sequence_control_set_ptr->mfmv_enabled = (uint8_t)(sequence_control_set_ptr->static_config.enc_mode == ENC_M0) ? 1 : 0;
 #endif
 }
 
@@ -2486,9 +2501,13 @@ static EbErrorType VerifySettings(
         SVT_LOG("Error instance %u : Invalid screen_content_mode. screen_content_mode must be [0 - 2]\n", channelNumber + 1);
         return_error = EB_ErrorBadParameter;
     }
-
+#if QPM
+    if (sequence_control_set_ptr->static_config.enable_adaptive_quantization > 2) {
+        SVT_LOG("Error instance %u : Invalid enable_adaptive_quantization. enable_adaptive_quantization must be [0-2]\n", channelNumber + 1);
+#else
     if(sequence_control_set_ptr->static_config.enable_adaptive_quantization>1){
         SVT_LOG("Error instance %u : Invalid enable_adaptive_quantization. enable_adaptive_quantization must be [0/1]\n", channelNumber + 1);
+#endif
         return_error = EB_ErrorBadParameter;
     }
 

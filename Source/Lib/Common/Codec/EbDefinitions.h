@@ -59,9 +59,26 @@ extern "C" {
 #define COMP_MODE                         1 // Add inter-inter compound modes
 #define PREDICTIVE_ME                     1 // Perform ME search around MVP @ MD
 #define MD_STAGING                        1
+#define MD_EXIT                           1
 #define TURN_OFF_DUAL_MODE                1
 #define SC_SETTINGS_TUNING                1 // SC Settings Tuning
 #define HME_ME_TUNING                     1 // HME/ME tuning
+#define QPM                               1 // Change the QP of each SB using deltaq to improve efficiency (Only active in Intra frames)
+#define MFMV_SUPPORT                      1// Temporal mvp support. aka. MFMV
+
+
+// Lossy optimizations -
+// Opt 0
+#define APPLY_3X3_FOR_BEST_ME             1 // Use the top 4 ME candidates @ 3x3 Unipred and 3x3 Bipred
+// Opt 1
+#define COEFF_BASED_SKIP_ATB              1 // Skip ATB if parent block does not have coeff
+// Opt 2
+#define EDGE_BASED_SKIP_ANGULAR_INTRA     1 // Use edge detection to bypass some angular modes
+// Opt 3
+#define PRUNE_REF_FRAME_AT_ME             1 // Bipred candidates reduction @ ME
+// Opt 4
+#define PRUNE_REF_FRAME_FRO_REC_PARTITION 1 // MD candidates reduction @ MD
+
 
 //FOR DEBUGGING - Do not remove
 #define NO_ENCDEC                         0 // bypass encDec to test cmpliance of MD. complained achieved when skip_flag is OFF. Port sample code from VCI-SW_AV1_Candidate1 branch
@@ -138,7 +155,11 @@ enum {
 #define PAD_VALUE                                (128+32)
 
 //  Delta QP support
+#if QPM
+#define ADD_DELTA_QP_SUPPORT                      1  // Add delta QP support
+#else
 #define ADD_DELTA_QP_SUPPORT                      0  // Add delta QP support - Please enable this flag and iproveSharpness (config) to test the QPM
+#endif
 #define BLOCK_MAX_COUNT_SB_128                    4421  // TODO: reduce alloction for 64x64
 #define BLOCK_MAX_COUNT_SB_64                     1101  // TODO: reduce alloction for 64x64
 #define MAX_TXB_COUNT                             4 // Maximum number of transform blocks.
@@ -346,6 +367,9 @@ extern void RunEmms();
     // TODO(jbb): Allow a way to force inline off for older compilers.
 #define AOM_INLINE inline
 #endif
+
+#define SIMD_INLINE static AOM_FORCE_INLINE
+
     //*********************************************************************************************************************//
     // mem.h
     /* shift right or left depending on sign of n */
@@ -485,6 +509,19 @@ typedef enum MD_STAGE {
 #define INTER_PRED_NFL      16
 
 #endif
+
+#if APPLY_3X3_FOR_BEST_ME
+#define BEST_CANDIDATE_COUNT 4
+#endif
+#if PRUNE_REF_FRAME_FRO_REC_PARTITION
+#define MAX_REF_TYPE_CAND   30
+#define PRUNE_REC_TH         5
+#endif
+#if PRUNE_REF_FRAME_AT_ME
+#define PRUNE_REF_ME_TH      2
+#endif
+
+#define MD_EXIT_THSL         0 // MD_EXIT_THSL -->0 is lossless 100 is maximum. Increase with a step of 10-20.
 
 typedef enum
 {
@@ -2373,8 +2410,11 @@ extern    uint32_t                   app_malloc_count;
 
 #define EB_DESTROY_SEMAPHORE(pointer) \
     do { \
-        eb_destroy_semaphore(pointer); \
-        EB_REMOVE_MEM_ENTRY(pointer, EB_SEMAPHORE); \
+        if (pointer) { \
+            eb_destroy_semaphore(pointer); \
+            EB_REMOVE_MEM_ENTRY(pointer, EB_SEMAPHORE); \
+            pointer = NULL; \
+        } \
     }while (0)
 
 #define EB_CREATE_MUTEX(pointer) \
@@ -2388,6 +2428,7 @@ extern    uint32_t                   app_malloc_count;
         if (pointer) { \
             eb_destroy_mutex(pointer); \
             EB_REMOVE_MEM_ENTRY(pointer, EB_MUTEX); \
+            pointer = NULL; \
         } \
     } while (0)
 
@@ -2507,7 +2548,7 @@ typedef enum DownSamplingMethod
 //***Segments***
 #define EB_SEGMENT_MIN_COUNT                        1
 #define EB_SEGMENT_MAX_COUNT                        64
-
+#if !MFMV_SUPPORT // SVT-HEVC TMVP code
 //***TMVP***
 #define LOG_MV_COMPRESS_UNIT_SIZE                   4
 #define MAX_TMVP_CAND_PER_LCU                       (BLOCK_SIZE_64 >> LOG_MV_COMPRESS_UNIT_SIZE)*(BLOCK_SIZE_64 >> LOG_MV_COMPRESS_UNIT_SIZE)
@@ -2522,7 +2563,7 @@ typedef enum DownSamplingMethod
 #define MAX_MODE_DECISION_CATEGORY_NUM              6
 #define LOG_MAX_AMVP_MODE_DECISION_CANDIDATE_NUM    2
 #define MAX_AMVP_MODE_DECISION_CANDIDATE_NUM        (1 << LOG_MAX_AMVP_MODE_DECISION_CANDIDATE_NUM)
-
+#endif
 #define CU_MAX_COUNT                                85
 
 #define EB_EVENT_MAX_COUNT                          20

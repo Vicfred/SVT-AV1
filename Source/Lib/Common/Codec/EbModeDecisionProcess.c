@@ -12,6 +12,12 @@
 static void mode_decision_context_dctor(EbPtr p)
 {
     ModeDecisionContext* obj = (ModeDecisionContext*)p;
+
+#if PRUNE_REF_FRAME_FRO_REC_PARTITION
+    EB_FREE_ARRAY(obj->ref_best_ref_sq_table);
+    EB_FREE_ARRAY(obj->ref_best_cost_sq_table);
+#endif
+
 #if NO_ENCDEC //SB128_TODO to upgrade
     int codedLeafIndex;
     for (codedLeafIndex = 0; codedLeafIndex < BLOCK_MAX_COUNT_SB_128; ++codedLeafIndex) {
@@ -213,6 +219,10 @@ EbErrorType mode_decision_context_ctor(
         }
 #endif
     }
+#if PRUNE_REF_FRAME_FRO_REC_PARTITION
+    EB_MALLOC_ARRAY(context_ptr->ref_best_cost_sq_table, MAX_REF_TYPE_CAND);
+    EB_MALLOC_ARRAY(context_ptr->ref_best_ref_sq_table, MAX_REF_TYPE_CAND);
+#endif
     return EB_ErrorNone;
 }
 
@@ -405,7 +415,7 @@ void reset_mode_decision(
 
     // QP
 #if ADD_DELTA_QP_SUPPORT
-    uint16_t picture_qp = picture_control_set_ptr->parent_pcs_ptr->quant_param.base_q_idx;
+    uint16_t picture_qp = picture_control_set_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx;
     context_ptr->qp = picture_qp;
     context_ptr->qp_index = context_ptr->qp;
 #else
@@ -495,14 +505,20 @@ void reset_mode_decision(
  ******************************************************/
 void mode_decision_configure_lcu(
     ModeDecisionContext   *context_ptr,
+#if !QPM
     LargestCodingUnit     *sb_ptr,
+#endif
     PictureControlSet     *picture_control_set_ptr,
+#if !QPM
     SequenceControlSet    *sequence_control_set_ptr,
-    uint8_t                    picture_qp,
+    uint8_t                picture_qp,
+#endif
     uint8_t                    sb_qp){
     (void)picture_control_set_ptr;
     //Disable Lambda update per LCU
-
+#if QPM
+    context_ptr->qp = sb_qp;
+#else
     //RC is off
     if (sequence_control_set_ptr->static_config.rate_control_mode == 0 && sequence_control_set_ptr->static_config.improve_sharpness == 0) {
         context_ptr->qp = (uint8_t)picture_qp;
@@ -511,6 +527,7 @@ void mode_decision_configure_lcu(
     //RC is on
     else
         context_ptr->qp = (uint8_t)sb_qp;
+#endif
     // Asuming cb and cr offset to be the same for chroma QP in both slice and pps for lambda computation
 
     context_ptr->chroma_qp = context_ptr->qp;
@@ -518,8 +535,12 @@ void mode_decision_configure_lcu(
     /* Note(CHKN) : when Qp modulation varies QP on a sub-LCU(CU) basis,  Lamda has to change based on Cu->QP , and then this code has to move inside the CU loop in MD */
 
     // Lambda Assignement
+#if QPM
+    context_ptr->qp_index = picture_control_set_ptr->parent_pcs_ptr->frm_hdr.delta_q_params.delta_q_present ? (uint8_t)quantizer_to_qindex[sb_qp] : (uint8_t)picture_control_set_ptr->parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx;
+#else
     context_ptr->qp_index = (uint8_t)picture_control_set_ptr->
         parent_pcs_ptr->frm_hdr.quantization_params.base_q_idx;
+#endif
 
     (*av1_lambda_assignment_function_table[picture_control_set_ptr->parent_pcs_ptr->pred_structure])(
         &context_ptr->fast_lambda,
