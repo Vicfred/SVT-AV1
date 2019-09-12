@@ -4579,40 +4579,40 @@ EbErrorType  intra_luma_prediction_for_interintra(
 {
     EbErrorType return_error = EB_ErrorNone;
 
-    uint32_t modeTypeLeftNeighborIndex = get_neighbor_array_unit_left_index(
+    uint32_t mode_type_left_neighbor_index = get_neighbor_array_unit_left_index(
         md_context_ptr->mode_type_neighbor_array,
         md_context_ptr->cu_origin_y);
-    uint32_t modeTypeTopNeighborIndex = get_neighbor_array_unit_top_index(
+    uint32_t mode_type_top_neighbor_index = get_neighbor_array_unit_top_index(
         md_context_ptr->mode_type_neighbor_array,
         md_context_ptr->cu_origin_x);
-    uint32_t intraLumaModeLeftNeighborIndex = get_neighbor_array_unit_left_index(
+    uint32_t intra_luma_mode_left_neighbor_index = get_neighbor_array_unit_left_index(
         md_context_ptr->intra_luma_mode_neighbor_array,
         md_context_ptr->cu_origin_y);
-    uint32_t intraLumaModeTopNeighborIndex = get_neighbor_array_unit_top_index(
+    uint32_t intra_luma_mode_top_neighbor_index = get_neighbor_array_unit_top_index(
         md_context_ptr->intra_luma_mode_neighbor_array,
         md_context_ptr->cu_origin_x);
 
     md_context_ptr->intra_luma_left_mode = (uint32_t)(
-        (md_context_ptr->mode_type_neighbor_array->left_array[modeTypeLeftNeighborIndex] != INTRA_MODE) ? DC_PRED:
-        (uint32_t)md_context_ptr->intra_luma_mode_neighbor_array->left_array[intraLumaModeLeftNeighborIndex]);
+        (md_context_ptr->mode_type_neighbor_array->left_array[mode_type_left_neighbor_index] != INTRA_MODE) ? DC_PRED:
+        (uint32_t)md_context_ptr->intra_luma_mode_neighbor_array->left_array[intra_luma_mode_left_neighbor_index]);
 
     md_context_ptr->intra_luma_top_mode = (uint32_t)(
-        (md_context_ptr->mode_type_neighbor_array->top_array[modeTypeTopNeighborIndex] != INTRA_MODE) ? DC_PRED:
-        (uint32_t)md_context_ptr->intra_luma_mode_neighbor_array->top_array[intraLumaModeTopNeighborIndex]);       //   use DC. This seems like we could use a LCU-width
+        (md_context_ptr->mode_type_neighbor_array->top_array[mode_type_top_neighbor_index] != INTRA_MODE) ? DC_PRED:
+        (uint32_t)md_context_ptr->intra_luma_mode_neighbor_array->top_array[intra_luma_mode_top_neighbor_index]);       //   use DC. This seems like we could use a LCU-width
 
     TxSize  tx_size = md_context_ptr->blk_geom->txsize[0][0];  //CHKN  TOcheck
 
 
-    uint8_t    topNeighArray[64 * 2 + 1];
-    uint8_t    leftNeighArray[64 * 2 + 1];
+    uint8_t    top_neigh_array[64 * 2 + 1];
+    uint8_t    left_neigh_array[64 * 2 + 1];
     PredictionMode mode = interintra_to_intra_mode[ interintra_mode];;
 
     if (md_context_ptr->cu_origin_y != 0)
-        memcpy(topNeighArray + 1, md_context_ptr->luma_recon_neighbor_array->top_array + md_context_ptr->cu_origin_x, md_context_ptr->blk_geom->bwidth * 2);
+        memcpy(top_neigh_array + 1, md_context_ptr->luma_recon_neighbor_array->top_array + md_context_ptr->cu_origin_x, md_context_ptr->blk_geom->bwidth * 2);
     if (md_context_ptr->cu_origin_x != 0)
-        memcpy(leftNeighArray + 1, md_context_ptr->luma_recon_neighbor_array->left_array + md_context_ptr->cu_origin_y, md_context_ptr->blk_geom->bheight * 2);
+        memcpy(left_neigh_array + 1, md_context_ptr->luma_recon_neighbor_array->left_array + md_context_ptr->cu_origin_y, md_context_ptr->blk_geom->bheight * 2);
     if (md_context_ptr->cu_origin_y != 0 && md_context_ptr->cu_origin_x != 0)
-        topNeighArray[0] = leftNeighArray[0] = md_context_ptr->luma_recon_neighbor_array->top_left_array[MAX_PICTURE_HEIGHT_SIZE + md_context_ptr->cu_origin_x - md_context_ptr->cu_origin_y];
+        top_neigh_array[0] = left_neigh_array[0] = md_context_ptr->luma_recon_neighbor_array->top_left_array[MAX_PICTURE_HEIGHT_SIZE + md_context_ptr->cu_origin_x - md_context_ptr->cu_origin_y];
 
     eb_av1_predict_intra_block(
         &md_context_ptr->sb_ptr->tile_info,
@@ -4626,8 +4626,8 @@ EbErrorType  intra_luma_prediction_for_interintra(
         0,                                                      //candidate_buffer_ptr->candidate_ptr->angle_delta[PLANE_TYPE_Y],
         0,                                                      //int32_t use_palette,
         FILTER_INTRA_MODES,                                     //CHKN FilterIntraMode filter_intra_mode,
-        topNeighArray + 1,
-        leftNeighArray + 1,
+        top_neigh_array + 1,
+        left_neigh_array + 1,
         prediction_ptr,                                         //uint8_t *dst,
         md_context_ptr->blk_geom->tx_boff_x[0][0] >> 2,         //int32_t col_off,
         md_context_ptr->blk_geom->tx_boff_y[0][0] >> 2,         //int32_t row_off,
