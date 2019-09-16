@@ -179,7 +179,7 @@ extern "C" {
 
 //*************************************************//
 // Lossless 
-#define TX_TYPE_SEARCH_OPT_0                     1
+#define TX_TYPE_SEARCH_OPT_0                     0
 #define TX_TYPE_LOSSLESS                         0
 #define INTERPOLATION_SEARCH_OPT_0               0
 //*************************************************//
