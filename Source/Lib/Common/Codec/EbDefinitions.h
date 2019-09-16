@@ -47,6 +47,25 @@ extern "C" {
 #define TWO_PASSES_MATCH                   1 // matches 1 pass and 2 pass for the same mode
 #define USE_PRED_ONLY_IN_2ND_PASS          1
 #endif
+    /*sc m0 feats*/
+#define enable_full_loop_escape               0
+#define disable_global_mv                     0
+#define disable_new_nearest                   0
+#define disable_nx4_4xn_parent_mv_injection   0
+#define disable_bipred3x3_injection           0
+#define disable_unipred3x3_injection          0
+#define disable_predictive_me                 0
+#define enable_class12                        0     
+#define enable_intrp_search_blk_size          0
+#define disable_spatial_sse_full_loop         0
+#define DISABLE_TRELLIS                       0
+#define enable_nic                            0
+#define disable_redundant_blk                 0
+
+
+
+
+
 #define TWO_PASSES_TEST              0
 #define PRED_CHANGE                  1 // Change the MRP in 4L
 #define PRED_CHANGE_5L               1 // Change the MRP in 5L Pictures 3, 5 , 7 and 9 use 1 as the reference, 11, 13, 15 and 17 use 9 as the reference

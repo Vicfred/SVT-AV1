@@ -1360,7 +1360,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #if M9_FULL_LOOP_ESCAPE
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
         if (picture_control_set_ptr->enc_mode <= ENC_M5)
+#if enable_full_loop_escape
+            context_ptr->full_loop_escape = 2;
+#else
             context_ptr->full_loop_escape = 0;
+#endif
         else
             context_ptr->full_loop_escape = 2;
     else if (picture_control_set_ptr->enc_mode <= ENC_M6)
@@ -1385,7 +1389,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 1                    On
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
         if (picture_control_set_ptr->enc_mode <= ENC_M5)
+#if disable_global_mv
+            context_ptr->global_mv_injection = 0;
+#else
             context_ptr->global_mv_injection = 1;
+#endif
         else
             context_ptr->global_mv_injection = 0;
     else if (picture_control_set_ptr->enc_mode <= ENC_M7)
@@ -1395,7 +1403,12 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 
 #if NEW_NEAREST_NEW_INJECTION
 #if NEW_NEAREST_NEW_M1_NREF
+#if disable_new_nearest
+    if (0)
+
+#else
     if (picture_control_set_ptr->enc_mode <= ENC_M0 && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag)
+#endif
 #else
     if (picture_control_set_ptr->enc_mode == ENC_M0)
 #endif
@@ -1405,7 +1418,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #endif
 #if ENHANCED_Nx4_4xN_NEW_MV
 #if M1_0_CANDIDATE
+#if disable_nx4_4xn_parent_mv_injection
+    if (0)
+#else
     if (picture_control_set_ptr->enc_mode <= ENC_M1)
+#endif
 #else
     if (picture_control_set_ptr->enc_mode == ENC_M0)
 #endif
@@ -1433,7 +1450,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 0                    OFF
     // 1                    On
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
-#if NEW_M0_SC
+#if NEW_M0_SC && !enable_wm
             context_ptr->warped_motion_injection = 0;
 #else
         if (picture_control_set_ptr->enc_mode <= ENC_M1)
@@ -1450,8 +1467,13 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 1                    ON FULL
     // 2                    Reduced set
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
+
         if (picture_control_set_ptr->enc_mode <= ENC_M2)
+#if disable_unipred3x3_injection
+            context_ptr->unipred3x3_injection = 0;
+#else
             context_ptr->unipred3x3_injection = 1;
+#endif
         else if (picture_control_set_ptr->enc_mode <= ENC_M4)
             context_ptr->unipred3x3_injection = 2;
         else
@@ -1473,7 +1495,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 1                    ON FULL
     // 2                    Reduced set
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
+#if disable_bipred3x3_injection
+        if (0)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M4)
+#endif
             context_ptr->bipred3x3_injection = 1;
         else
             context_ptr->bipred3x3_injection = 0;
@@ -1492,8 +1518,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 3                    Level 3: 7x5 full-pel search +  (H + V + D only ~ the best) sub-pel refinement = up to 6 half-pel + up to 6  quarter-pel = up to 12 positions + pred_me_distortion to pa_me_distortion deviation on
     // 4                    Level 4: 7x5 full-pel search +  (H + V + D) sub-pel refinement = 8 half-pel + 8 quarter-pel = 16 positions + pred_me_distortion to pa_me_distortion deviation on
     // 5                    Level 5: 7x5 full-pel search +  (H + V + D) sub-pel refinement = 8 half-pel + 8 quarter-pel = 16 positions + pred_me_distortion to pa_me_distortion deviation off
-
+#if disable_predictive_me
+    if (0)
+#else
     if (picture_control_set_ptr->slice_type != I_SLICE)
+#endif
         // Hsan: kept ON for sc_content_detected as ~5% gain for minecraft clip
 #if M2_BAD_SLOPE_COMB
         if (picture_control_set_ptr->enc_mode <= ENC_M2)
@@ -1514,7 +1543,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 0                    OFF
     // 1                    ON
 #if M1_0_CANDIDATE
+#if enable_class12
+    context_ptr->combine_class12 = 1;
+#else
     context_ptr->combine_class12 = (picture_control_set_ptr->enc_mode <= ENC_M1) ? 0 : 1;
+#endif
 #else
     context_ptr->combine_class12 = (picture_control_set_ptr->enc_mode == ENC_M0) ? 0 : 1;
 #endif
@@ -1525,7 +1558,12 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 0                    ON for 8x8 and above
     // 1                    ON for 16x16 and above
     // 2                    ON for 32x32 and above
+#if enable_intrp_search_blk_size
+
+    if (0)
+#else
     if (picture_control_set_ptr->enc_mode <= ENC_M4)
+#endif
         context_ptr->interpolation_filter_search_blk_size = 0;
     else
         context_ptr->interpolation_filter_search_blk_size = 1;
@@ -1538,7 +1576,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #if SPATIAL_SSE
     // Derive Spatial SSE Flag
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
+#if disable_spatial_sse_full_loop
+        if (0)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M4)
+#endif
             context_ptr->spatial_sse_full_loop = EB_TRUE;
         else
             context_ptr->spatial_sse_full_loop = EB_FALSE;
@@ -1583,7 +1625,12 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         else
             context_ptr->redundant_blk = EB_FALSE;
 #if M0_3_CANDIDATE
+#if disable_redundant_blk
+
+    else if (0)
+#else
     else if (picture_control_set_ptr->enc_mode >= ENC_M0 && picture_control_set_ptr->enc_mode <= ENC_M5)
+#endif
 #else
     else if (picture_control_set_ptr->enc_mode >= ENC_M1 && picture_control_set_ptr->enc_mode <= ENC_M5)
 #endif
@@ -1599,9 +1646,13 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         context_ptr->md_staging_mode = 3;
     else
         context_ptr->md_staging_mode = 0; //use fast-loop0->full-loop
+#if enable_nic
 
+    context_ptr->nic_level = 1;
+#else
     // Derive nic level
     context_ptr->nic_level = (picture_control_set_ptr->enc_mode == ENC_M0) ? 0 : 1;
+#endif
 
 #if USE_MDS3_C1C2_REDUCED_NIC
     context_ptr->md_staging_mode = 3;
