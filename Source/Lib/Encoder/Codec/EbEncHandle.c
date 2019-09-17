@@ -2254,7 +2254,11 @@ void SetParamBasedOnInput(SequenceControlSet *sequence_control_set_ptr)
         sequence_control_set_ptr->seq_header.max_frame_width*sequence_control_set_ptr->seq_header.max_frame_height);
 #if NEW_M0_SC
     if (sequence_control_set_ptr->static_config.screen_content_mode == 1)
+#if sb_size_128
+        sequence_control_set_ptr->static_config.super_block_size = 128;
+#else
         sequence_control_set_ptr->static_config.super_block_size       =  64;
+#endif
     else
 #if TWO_PASSES_TEST
         sequence_control_set_ptr->static_config.super_block_size = (sequence_control_set_ptr->static_config.enc_mode <= ENC_M2 && sequence_control_set_ptr->input_resolution >= INPUT_SIZE_1080i_RANGE) ? 128 : 64;
@@ -2299,7 +2303,11 @@ void SetParamBasedOnInput(SequenceControlSet *sequence_control_set_ptr)
 #endif
     //0: ON
     //1: OFF
+#if enable_cdf
+    sequence_control_set_ptr->cdf_mode = (uint8_t) 1;
+#else
     sequence_control_set_ptr->cdf_mode = (uint8_t)(sequence_control_set_ptr->static_config.enc_mode <= ENC_M6) ? 0 : 1;
+#endif
 
     //0: NSQ absent
     //1: NSQ present

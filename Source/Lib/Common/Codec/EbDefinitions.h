@@ -62,6 +62,16 @@ extern "C" {
 #define enable_nic                            0
 #define disable_redundant_blk                 0
 
+#define enable_estimate_angle_intra           0
+#define disable_update_cdf                    0
+#define enable_redundant_blk                  0
+#define enable_nsq_table                      0 
+#define full_sad_fractional_search_method     0
+#define disable_restoration                   0
+#define disable_atb                           0
+#define enable_comp_mode                      0
+#define enable_cdf                            0
+#define sb_size_128                           0
 
 
 

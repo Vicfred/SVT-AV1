@@ -10097,6 +10097,9 @@ void md_encode_block(
 #endif
 #endif
 #endif
+#if enable_nsq_table
+    is_nsq_table_used = EB_TRUE;
+#endif
     context_ptr->open_loop_block_rank = open_loop_block_rank;
     context_ptr->early_split_flag = early_split_flag;
     context_ptr->nsq_mode_idx = picture_control_set_ptr->parent_pcs_ptr->sb_depth_mode_array[lcuAddr] - 1;

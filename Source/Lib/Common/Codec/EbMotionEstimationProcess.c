@@ -176,9 +176,13 @@ EbErrorType signal_derivation_me_kernel_oq(
         set_me_hme_params_from_config(
             sequence_control_set_ptr,
             context_ptr->me_context_ptr);
-        if (picture_control_set_ptr->sc_content_detected)
+    if (picture_control_set_ptr->sc_content_detected)
 #if NEW_M0_SC
+#if full_sad_fractional_search_method
+        context_ptr->me_context_ptr->fractional_search_method = FULL_SAD_SEARCH;
+#else
             context_ptr->me_context_ptr->fractional_search_method = SUB_SAD_SEARCH;
+#endif
 #else
             if (picture_control_set_ptr->enc_mode <= ENC_M1)
                 context_ptr->me_context_ptr->fractional_search_method = SSD_SEARCH ;
@@ -392,7 +396,11 @@ EbErrorType tf_signal_derivation_me_kernel_oq(
 
     if (picture_control_set_ptr->sc_content_detected)
         if (picture_control_set_ptr->enc_mode <= ENC_M5)
+#if full_sad_fractional_search_method
+            context_ptr->me_context_ptr->fractional_search_method = FULL_SAD_SEARCH;
+#else
             context_ptr->me_context_ptr->fractional_search_method = SSD_SEARCH;
+#endif
         else
             context_ptr->me_context_ptr->fractional_search_method = SUB_SAD_SEARCH;
     else

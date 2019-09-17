@@ -1527,7 +1527,11 @@ EbErrorType signal_derivation_multi_processes_oq(
 #endif
 #if STRENGHTHEN_MD_STAGE_3
 #if SHUT_ATB_NREF
+#if disable_atb
+            picture_control_set_ptr->atb_mode = 0;
+#else
             picture_control_set_ptr->atb_mode = (MR_MODE || picture_control_set_ptr->is_used_as_reference_flag) ? 1 : 0;
+#endif
 #else
             picture_control_set_ptr->atb_mode = 1;
 #endif
@@ -1589,7 +1593,9 @@ EbErrorType signal_derivation_multi_processes_oq(
             if (sequence_control_set_ptr->compound_mode)
 #if DISABLE_COMP_SC
 #if FULL_COMPOUND_BDRATE
+#if ! enable_comp_mode
                 picture_control_set_ptr->compound_mode = picture_control_set_ptr->sc_content_detected ? 0 :
+#endif
 #if M2_COMP_NREF
                 picture_control_set_ptr->enc_mode <= ENC_M0 || (picture_control_set_ptr->enc_mode <= ENC_M2 && picture_control_set_ptr->is_used_as_reference_flag) ? 2 : 1;
 #else

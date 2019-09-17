@@ -14422,6 +14422,9 @@ EbErrorType motion_estimate_lcu(
 #endif
                         ? EB_FALSE : is_nsq_table_used;
 #endif
+#if enable_nsq_table
+    is_nsq_table_used = EB_TRUE;
+#endif
 #endif
 #if !MRP_ME
     referenceObject =
