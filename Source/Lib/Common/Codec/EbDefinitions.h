@@ -62,16 +62,26 @@ extern "C" {
 #define enable_nic                            0
 #define disable_redundant_blk                 0
 
-#define enable_estimate_angle_intra           0
-#define disable_update_cdf                    0
-#define enable_redundant_blk                  0
-#define enable_nsq_table                      0 
-#define full_sad_fractional_search_method     0
-#define disable_restoration                   0
-#define disable_atb                           0
-#define enable_comp_mode                      0
-#define enable_cdf                            0
-#define sb_size_128                           0
+#define enable_estimate_angle_intra               0
+#define disable_update_cdf                        0
+#define enable_redundant_blk                      0
+#define enable_nsq_table                          0 
+#define full_sad_fractional_search_method         0
+#define disable_restoration                       0
+#define disable_atb                               0
+#define enable_comp_mode                          0
+#define enable_cdf                                0
+#define sb_size_128                               0
+#define me_filtering                              0
+#define refcount_one                              0
+#define refcount_two                              0
+#define enable_prune_unipred_at_me                0
+#define enable_prune_ref_frame_for_rec_partitions 0
+#define lighter_tx_search_level                   0
+#define disable_wn_filter                         0 
+#define disable_sg_filter                         0
+#define disable_cdef                              0
+#define lighter_loop_filter_mode                  0
 
 
 

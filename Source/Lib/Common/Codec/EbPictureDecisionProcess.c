@@ -1238,7 +1238,11 @@ EbErrorType signal_derivation_multi_processes_oq(
     if (!picture_control_set_ptr->sequence_control_set_ptr->static_config.disable_dlf_flag && picture_control_set_ptr->allow_intrabc == 0) {
     if (sc_content_detected)
 #if LOOP_FILTER_FIX
+#if lighter_loop_filter_mode
+        if (0)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M1)
+#endif
             picture_control_set_ptr->loop_filter_mode = 3;
         else if (picture_control_set_ptr->enc_mode <= ENC_M5)
             picture_control_set_ptr->loop_filter_mode = picture_control_set_ptr->is_used_as_reference_flag ? 3 : 0;
@@ -1284,7 +1288,11 @@ EbErrorType signal_derivation_multi_processes_oq(
 #endif
     if (sequence_control_set_ptr->seq_header.enable_cdef && picture_control_set_ptr->allow_intrabc == 0) {
         if (sc_content_detected)
+#if disable_cdef
+            if (0)
+#else
             if (picture_control_set_ptr->enc_mode <= ENC_M5)
+#endif
                 picture_control_set_ptr->cdef_filter_mode = 4;
             else
                 picture_control_set_ptr->cdef_filter_mode = 0;
@@ -1306,7 +1314,11 @@ EbErrorType signal_derivation_multi_processes_oq(
 
     Av1Common* cm = picture_control_set_ptr->av1_cm;
     if (sc_content_detected)
+#if disable_sg_filter
+        if (0)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M5)
+#endif
             cm->sg_filter_mode = 4;
         else
             cm->sg_filter_mode = 0;
@@ -1324,7 +1336,11 @@ EbErrorType signal_derivation_multi_processes_oq(
     // 2                                            5-Tap luma/ 5-Tap chroma
     // 3                                            7-Tap luma/ 5-Tap chroma
     if (sc_content_detected)
+#if disable_wn_filter
+        if (0)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M5)
+#endif
             cm->wn_filter_mode = 3;
         else
             cm->wn_filter_mode = 0;
@@ -1341,7 +1357,11 @@ EbErrorType signal_derivation_multi_processes_oq(
     // 2                                              Tx search at inter-depth
     // 3                                              Tx search at full loop
     if (sc_content_detected)
+#if lighter_tx_search_level
+        if (0)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M6)
+#endif
             picture_control_set_ptr->tx_search_level = TX_SEARCH_FULL_LOOP;
         else
             if (picture_control_set_ptr->is_used_as_reference_flag)
@@ -1631,13 +1651,21 @@ EbErrorType signal_derivation_multi_processes_oq(
             picture_control_set_ptr->adaptive_txb_search_level = 6;
 #endif
 #if PRUNE_REF_FRAME_FRO_REC_PARTITION
+#if enable_prune_ref_frame_for_rec_partitions
+        if (0)
+#else
         if (picture_control_set_ptr->sc_content_detected || picture_control_set_ptr->enc_mode == ENC_M0)
+#endif
             picture_control_set_ptr->prune_ref_frame_for_rec_partitions = 0;
         else
             picture_control_set_ptr->prune_ref_frame_for_rec_partitions = 1;
 #endif
 #if PRUNE_REF_FRAME_AT_ME
+#if enable_prune_unipred_at_me 
+        if (0)
+#else
         if (picture_control_set_ptr->sc_content_detected || picture_control_set_ptr->enc_mode == ENC_M0 || picture_control_set_ptr->enc_mode >= ENC_M4)
+#endif
             picture_control_set_ptr->prune_unipred_at_me = 0;
         else
             picture_control_set_ptr->prune_unipred_at_me = 1;
