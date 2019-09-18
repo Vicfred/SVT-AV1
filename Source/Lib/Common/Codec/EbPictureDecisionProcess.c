@@ -1192,7 +1192,11 @@ EbErrorType signal_derivation_multi_processes_oq(
             picture_control_set_ptr->interpolation_search_level = IT_SEARCH_FAST_LOOP;
         else if (sc_content_detected)
 #if NEW_M0_SC
+#if enable_it_search
+            picture_control_set_ptr->interpolation_search_level = IT_SEARCH_FAST_LOOP_UV_BLIND;
+#else
             picture_control_set_ptr->interpolation_search_level = IT_SEARCH_OFF;
+#endif
 #else
             if (picture_control_set_ptr->enc_mode <= ENC_M1)
                 picture_control_set_ptr->interpolation_search_level = IT_SEARCH_FAST_LOOP_UV_BLIND;
@@ -1220,7 +1224,11 @@ EbErrorType signal_derivation_multi_processes_oq(
     if (picture_control_set_ptr->slice_type == I_SLICE) {
         picture_control_set_ptr->allow_screen_content_tools = picture_control_set_ptr->sc_content_detected;
         if (picture_control_set_ptr->enc_mode <= ENC_M5)
+#if disable_allow_intra_bc
+            picture_control_set_ptr->allow_intrabc = 0;
+#else
             picture_control_set_ptr->allow_intrabc =  picture_control_set_ptr->sc_content_detected;
+#endif
         else
             picture_control_set_ptr->allow_intrabc =  0;
 
@@ -1450,10 +1458,14 @@ EbErrorType signal_derivation_multi_processes_oq(
     if (picture_control_set_ptr->slice_type == I_SLICE)
 #if M9_INTRA
     if (sc_content_detected)
+#if lighter_intra_pred
+        picture_control_set_ptr->intra_pred_mode = 3;
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M6)
             picture_control_set_ptr->intra_pred_mode = 0;
         else
             picture_control_set_ptr->intra_pred_mode = 4;
+#endif
     else
         if (picture_control_set_ptr->enc_mode <= ENC_M6)
             picture_control_set_ptr->intra_pred_mode = 0;
@@ -1464,8 +1476,13 @@ EbErrorType signal_derivation_multi_processes_oq(
 #endif
     else {
     if (sc_content_detected)
+
         if (picture_control_set_ptr->enc_mode <= ENC_M1)
+#if lighter_intra_pred
+            picture_control_set_ptr->intra_pred_mode = 3;
+#else
             picture_control_set_ptr->intra_pred_mode = 0;
+#endif
         else if (picture_control_set_ptr->enc_mode <= ENC_M2)
             if (picture_control_set_ptr->temporal_layer_index == 0)
                 picture_control_set_ptr->intra_pred_mode = 1;
@@ -1509,11 +1526,15 @@ EbErrorType signal_derivation_multi_processes_oq(
 
 #endif
 #if M9_CU_8x8
-        if (picture_control_set_ptr->sc_content_detected)
+    if (picture_control_set_ptr->sc_content_detected)
 #if NEW_M0_SC
+#if mode1_cu8x8
+        picture_control_set_ptr->cu8x8_mode = CU_8x8_MODE_1;
+#else
             picture_control_set_ptr->cu8x8_mode = (picture_control_set_ptr->temporal_layer_index > 0) ?
             CU_8x8_MODE_1 :
             CU_8x8_MODE_0;
+#endif
 #else
             if (picture_control_set_ptr->enc_mode <= ENC_M1)
                 picture_control_set_ptr->cu8x8_mode = CU_8x8_MODE_0;
@@ -1613,7 +1634,9 @@ EbErrorType signal_derivation_multi_processes_oq(
             if (sequence_control_set_ptr->compound_mode)
 #if DISABLE_COMP_SC
 #if FULL_COMPOUND_BDRATE
-#if ! enable_comp_mode
+#if enable_comp_mode
+                picture_control_set_ptr->compound_mode =
+#else
                 picture_control_set_ptr->compound_mode = picture_control_set_ptr->sc_content_detected ? 0 :
 #endif
 #if M2_COMP_NREF

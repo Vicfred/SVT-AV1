@@ -82,6 +82,10 @@ extern "C" {
 #define disable_sg_filter                         0
 #define disable_cdef                              0
 #define lighter_loop_filter_mode                  0
+#define mode1_cu8x8                               0
+#define lighter_intra_pred                        0
+#define disable_allow_intra_bc                    0
+#define enable_it_search                          0
 
 
 
