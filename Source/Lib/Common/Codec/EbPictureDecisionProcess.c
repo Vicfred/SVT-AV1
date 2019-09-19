@@ -999,7 +999,13 @@ EbErrorType signal_derivation_multi_processes_oq(
         // 6                                     pred - 1 + 3
         // 7                                     All
         if (MR_MODE || sc_content_detected)
+#if enable_mdc_sc_6
+            picture_control_set_ptr->mdc_depth_level = 6;
+#elif enable_mdc_sc_3
+            picture_control_set_ptr->mdc_depth_level = 6;
+#else
             picture_control_set_ptr->mdc_depth_level = MAX_MDC_LEVEL;
+#endif
         else if (picture_control_set_ptr->enc_mode == ENC_M0)
             picture_control_set_ptr->mdc_depth_level = (sequence_control_set_ptr->input_resolution == INPUT_SIZE_576p_RANGE_OR_LOWER) ? MAX_MDC_LEVEL : 6;
         else if (picture_control_set_ptr->enc_mode <= ENC_M2)

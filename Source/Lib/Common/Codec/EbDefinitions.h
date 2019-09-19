@@ -86,6 +86,8 @@ extern "C" {
 #define lighter_intra_pred                        0
 #define disable_allow_intra_bc                    0
 #define enable_it_search                          0
+#define enable_mdc_sc_6                           0
+#define enable_mdc_sc_3                           0
 
 
 
