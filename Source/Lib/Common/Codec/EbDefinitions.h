@@ -88,7 +88,8 @@ extern "C" {
 #define enable_it_search                          0
 #define enable_mdc_sc_6                           0
 #define enable_mdc_sc_3                           0
-
+#define enable_pic_filter_intra_mode_l0           0
+#define disable_interintra_compound               0
     /*M1 context*/
 
 #define m0_sc_new_nearest                         0
@@ -107,6 +108,24 @@ extern "C" {
 #define m2_compound_mode                          0
 #define m2_ref_count                              0
 #define m2_tmvp                                   0
+
+    /*M2 context*/
+
+#define m1_nx4                                  0
+#define m1_class12                              0
+#define m1_nsq_sc                               0
+#define m1_loop_filter_mode                     0
+#define m1_intra_pred                           0
+#define m1_atb                                  0
+#define m1_compound_mode                        0
+#define m1_ref_count                            0
+#define m3_unipred3x3                           0
+#define m3_predictive_me                        0
+#define m3_hp_mode                              0
+#define m3_nsq_depth                            0
+#define m3_tx_reduced_set                       0
+#define m3_intra_pred                           0
+
 
 
 #define TWO_PASSES_TEST              0

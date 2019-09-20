@@ -248,6 +248,8 @@ EbErrorType signal_derivation_me_kernel_oq(
     }
 #if M3_SP_NREF
     else if (picture_control_set_ptr->enc_mode <= ENC_M1 || (picture_control_set_ptr->enc_mode <= ENC_M2 && picture_control_set_ptr->is_used_as_reference_flag)) {
+#elif m3_hp_mode
+    else if (picture_control_set_ptr->enc_mode <= ENC_M1) {
 #else
     else if (picture_control_set_ptr->enc_mode <= ENC_M2) {
 #endif
@@ -395,10 +397,16 @@ EbErrorType tf_signal_derivation_me_kernel_oq(
         sequence_control_set_ptr->input_resolution);
 
     if (picture_control_set_ptr->sc_content_detected)
-        if (picture_control_set_ptr->enc_mode <= ENC_M5)
 #if full_sad_fractional_search_method
+        if (picture_control_set_ptr->enc_mode == ENC_M0)
             context_ptr->me_context_ptr->fractional_search_method = FULL_SAD_SEARCH;
+        
+        else if (picture_control_set_ptr->enc_mode <= ENC_M5)
+
+            context_ptr->me_context_ptr->fractional_search_method = SSD_SEARCH;
 #else
+        if (picture_control_set_ptr->enc_mode <= ENC_M5)
+
             context_ptr->me_context_ptr->fractional_search_method = SSD_SEARCH;
 #endif
         else
@@ -447,6 +455,8 @@ EbErrorType tf_signal_derivation_me_kernel_oq(
     }
 #if M3_SP_NREF
     else if (picture_control_set_ptr->enc_mode <= ENC_M1 || (picture_control_set_ptr->enc_mode <= ENC_M2 && picture_control_set_ptr->is_used_as_reference_flag)) {
+#elif m3_hp_mode
+    else if (picture_control_set_ptr->enc_mode <= ENC_M1) {
 #else
     else if (picture_control_set_ptr->enc_mode <= ENC_M2) {
 #endif
