@@ -14416,7 +14416,11 @@ EbErrorType motion_estimate_lcu(
         picture_control_set_ptr->nsq_search_level < NSQ_SEARCH_FULL) ? EB_TRUE : EB_FALSE;
 #if DISABLE_NSQ_TABLE
 #if NSQ_TABLES_NREF
+#if m0_nsq_table
+    is_nsq_table_used = ((picture_control_set_ptr->enc_mode <= ENC_M1 && picture_control_set_ptr->is_used_as_reference_flag) || (picture_control_set_ptr->enc_mode <= ENC_M1 && picture_control_set_ptr->sc_content_detected))
+#else
     is_nsq_table_used = ((picture_control_set_ptr->enc_mode <= ENC_M0 && picture_control_set_ptr->is_used_as_reference_flag) || (picture_control_set_ptr->enc_mode == ENC_M0 && picture_control_set_ptr->sc_content_detected))
+#endif
 #else
     is_nsq_table_used = (picture_control_set_ptr->enc_mode == ENC_M0 || (picture_control_set_ptr->enc_mode == ENC_M0 && picture_control_set_ptr->sc_content_detected))
 #endif

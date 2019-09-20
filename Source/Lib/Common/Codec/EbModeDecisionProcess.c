@@ -484,8 +484,13 @@ void reset_mode_decision(
     }
 
 #if EIGTH_PEL_MV
+#if m0_high_precision_mv
+    picture_control_set_ptr->parent_pcs_ptr->allow_high_precision_mv = picture_control_set_ptr->enc_mode <= ENC_M1 &&
+        (sequence_control_set_ptr->input_resolution == 0) ? 1 : 0;
+#else
     picture_control_set_ptr->parent_pcs_ptr->allow_high_precision_mv = picture_control_set_ptr->enc_mode == ENC_M0 &&
         (sequence_control_set_ptr->input_resolution == 0) ? 1 : 0;
+#endif
 #endif
 
 #if ENABLE_WARPED_MV

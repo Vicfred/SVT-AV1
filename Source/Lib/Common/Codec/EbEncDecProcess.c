@@ -1407,7 +1407,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     if (0)
 
 #else
+#if m0_sc_new_nearest
+    if (picture_control_set_ptr->enc_mode <= ENC_M1 && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag)
+#else
     if (picture_control_set_ptr->enc_mode <= ENC_M0 && picture_control_set_ptr->parent_pcs_ptr->is_used_as_reference_flag)
+#endif
 #endif
 #else
     if (picture_control_set_ptr->enc_mode == ENC_M0)
@@ -1421,7 +1425,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #if disable_nx4_4xn_parent_mv_injection
     if (0)
 #else
+#if m2_nx4
+    if (picture_control_set_ptr->enc_mode <= ENC_M0)
+#else
     if (picture_control_set_ptr->enc_mode <= ENC_M1)
+#endif
 #endif
 #else
     if (picture_control_set_ptr->enc_mode == ENC_M0)
@@ -1543,7 +1551,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 0                    OFF
     // 1                    ON
 #if M1_0_CANDIDATE
-#if enable_class12
+#if enable_class12 || m2_class12
     context_ptr->combine_class12 = 1;
 #else
     context_ptr->combine_class12 = (picture_control_set_ptr->enc_mode <= ENC_M1) ? 0 : 1;
@@ -1641,7 +1649,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 
 #if FULL_LOOP_SPLIT
     // Derive md_staging_mode
+#if m0_md_staging_mode
+    if (picture_control_set_ptr->enc_mode <= ENC_M1)
+#else
     if (picture_control_set_ptr->enc_mode == ENC_M0)
+#endif
         context_ptr->md_staging_mode = 1;
     else if (picture_control_set_ptr->enc_mode <= ENC_M4)
         context_ptr->md_staging_mode = 3;
@@ -1652,7 +1664,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     context_ptr->nic_level = 1;
 #else
     // Derive nic level
+#if m0_nic_level
+    context_ptr->nic_level = (picture_control_set_ptr->enc_mode <= ENC_M1) ? 0 : 1;
+#else
     context_ptr->nic_level = (picture_control_set_ptr->enc_mode == ENC_M0) ? 0 : 1;
+#endif
 #endif
 
 #if USE_MDS3_C1C2_REDUCED_NIC

@@ -7049,7 +7049,11 @@ void  inject_intra_candidates(
 #if enable_estimate_angle_intra
     context_ptr->estimate_angle_intra = 1;
 #else
+#if m0_estimate_angle_int
+    context_ptr->estimate_angle_intra = ((picture_control_set_ptr->enc_mode > ENC_M3) || (picture_control_set_ptr->enc_mode <= ENC_M1 && picture_control_set_ptr->parent_pcs_ptr->temporal_layer_index == 0)) ? 0 : 1;
+#else
     context_ptr->estimate_angle_intra = ((picture_control_set_ptr->enc_mode > ENC_M3) || (picture_control_set_ptr->enc_mode <= ENC_M0 && picture_control_set_ptr->parent_pcs_ptr->temporal_layer_index == 0)) ? 0 : 1;
+#endif
 #endif
 #else
     context_ptr->estimate_angle_intra = ((picture_control_set_ptr->enc_mode > ENC_M3) || (picture_control_set_ptr->enc_mode == ENC_M0)) ? 0 : 1;

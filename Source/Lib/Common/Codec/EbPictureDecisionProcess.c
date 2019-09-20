@@ -1048,11 +1048,17 @@ EbErrorType signal_derivation_multi_processes_oq(
         if (MR_MODE) // NSQ
             picture_control_set_ptr->nsq_search_level = NSQ_SEARCH_FULL;
         else if (sc_content_detected)
+#if m0_nsq_sc
+            if (picture_control_set_ptr->enc_mode <= ENC_M1)
+#else
             if (picture_control_set_ptr->enc_mode == ENC_M0)
+#endif
                 picture_control_set_ptr->nsq_search_level = NSQ_SEARCH_LEVEL6;
+#if ! m0_nsq_sc && !m2_nsq_sc
             else if (picture_control_set_ptr->enc_mode <= ENC_M1)
                 picture_control_set_ptr->nsq_search_level = (picture_control_set_ptr->is_used_as_reference_flag) ?
-                             NSQ_SEARCH_LEVEL6 : NSQ_SEARCH_LEVEL3;
+                NSQ_SEARCH_LEVEL6 : NSQ_SEARCH_LEVEL3;
+#endif
 #if TWO_PASSES_TEST
             else if (picture_control_set_ptr->enc_mode <= ENC_M4)
 #else
@@ -1252,7 +1258,7 @@ EbErrorType signal_derivation_multi_processes_oq(
     if (!picture_control_set_ptr->sequence_control_set_ptr->static_config.disable_dlf_flag && picture_control_set_ptr->allow_intrabc == 0) {
     if (sc_content_detected)
 #if LOOP_FILTER_FIX
-#if lighter_loop_filter_mode
+#if lighter_loop_filter_mode || m2_loop_filter_mode
         if (0)
 #else
         if (picture_control_set_ptr->enc_mode <= ENC_M1)
@@ -1482,8 +1488,11 @@ EbErrorType signal_derivation_multi_processes_oq(
 #endif
     else {
     if (sc_content_detected)
-
+#if m2_intra_pred
+        if (0)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M1)
+#endif
 #if lighter_intra_pred
             picture_control_set_ptr->intra_pred_mode = 3;
 #else
@@ -1570,7 +1579,11 @@ EbErrorType signal_derivation_multi_processes_oq(
 #if M2_ATB_NRF
         if (picture_control_set_ptr->enc_mode <= ENC_M1 && picture_control_set_ptr->is_used_as_reference_flag && sequence_control_set_ptr->static_config.encoder_bit_depth == EB_8BIT)
 #else
+#if m2_atb
+    if (picture_control_set_ptr->enc_mode <= ENC_M0 && sequence_control_set_ptr->static_config.encoder_bit_depth == EB_8BIT)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M1 && sequence_control_set_ptr->static_config.encoder_bit_depth == EB_8BIT)
+#endif
 #endif
 #if STRENGHTHEN_MD_STAGE_3
 #if SHUT_ATB_NREF
@@ -1648,7 +1661,11 @@ EbErrorType signal_derivation_multi_processes_oq(
 #if M2_COMP_NREF
                 picture_control_set_ptr->enc_mode <= ENC_M0 || (picture_control_set_ptr->enc_mode <= ENC_M2 && picture_control_set_ptr->is_used_as_reference_flag) ? 2 : 1;
 #else
+#if m2_compound_mode
+                picture_control_set_ptr->enc_mode <= ENC_M0 ? 2 : 1;
+#else
                 picture_control_set_ptr->enc_mode <= ENC_M1 ? 2 : 1;
+#endif
 #endif
 #else
                 picture_control_set_ptr->compound_mode = picture_control_set_ptr->sc_content_detected ? 0 : 1;

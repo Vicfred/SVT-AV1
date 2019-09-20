@@ -89,7 +89,24 @@ extern "C" {
 #define enable_mdc_sc_6                           0
 #define enable_mdc_sc_3                           0
 
+    /*M1 context*/
 
+#define m0_sc_new_nearest                         0
+#define m2_nx4                                    0
+#define m2_class12                                0
+#define m0_md_staging_mode                        0
+#define m0_estimate_angle_int                     0
+#define m0_high_precision_mv                      0
+#define m0_nsq_table                              0
+#define m0_nsq_sc                                 0
+#define m0_interintra_compound                    0
+#define m2_nsq_sc                                 0
+#define m2_loop_filter_mode                       0
+#define m2_intra_pred                             0
+#define m2_atb                                    0
+#define m2_compound_mode                          0
+#define m2_ref_count                              0
+#define m2_tmvp                                   0
 
 
 #define TWO_PASSES_TEST              0
