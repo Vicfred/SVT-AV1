@@ -2296,7 +2296,11 @@ void SetParamBasedOnInput(SequenceControlSet *sequence_control_set_ptr)
 #if MEMORY_FOOTPRINT_OPT_ME_MV
     //0: MRP Mode 0 (4,3)
     //1: MRP Mode 1 (2,2)
+#if m4_mrp_mode
+    sequence_control_set_ptr->mrp_mode = (uint8_t)(sequence_control_set_ptr->static_config.enc_mode <= ENC_M2) ? 0 : 1;
+#else
     sequence_control_set_ptr->mrp_mode = (uint8_t) (sequence_control_set_ptr->static_config.enc_mode <= ENC_M3) ? 0 : 1;
+#endif
 #if 0//TWO_PASS_PART
     if (sequence_control_set_ptr->static_config.use_output_stat_file)
         sequence_control_set_ptr->mrp_mode = 1;
@@ -2320,7 +2324,7 @@ void SetParamBasedOnInput(SequenceControlSet *sequence_control_set_ptr)
     // Set down-sampling method     Settings
     // 0                            0: filtering
     // 1                            1: decimation
-#if me_filtering
+#if me_filtering || m4_me_filtering
     if (0)
 #else
     if (sequence_control_set_ptr->static_config.enc_mode <= ENC_M3)

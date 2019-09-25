@@ -1429,6 +1429,8 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     if (picture_control_set_ptr->enc_mode <= ENC_M0)
 #elif m1_nx4
     if (picture_control_set_ptr->enc_mode <= ENC_M2)
+#elif m2_sc_cand_nx4
+    if (picture_control_set_ptr->enc_mode <= ENC_M2)
 #else
     if (picture_control_set_ptr->enc_mode <= ENC_M1)
 #endif
@@ -1491,7 +1493,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
             context_ptr->unipred3x3_injection = 2;
         else
             context_ptr->unipred3x3_injection = 0;
-#if M3_0_CANDIDATE
+#if M3_0_CANDIDATE 
     else if (picture_control_set_ptr->enc_mode <= ENC_M3)
 #else
     else if (picture_control_set_ptr->enc_mode <= ENC_M2)
@@ -1537,8 +1539,12 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     if (picture_control_set_ptr->slice_type != I_SLICE)
 #endif
         // Hsan: kept ON for sc_content_detected as ~5% gain for minecraft clip
-#if M2_BAD_SLOPE_COMB && !m3_predictive_me
+#if M2_BAD_SLOPE_COMB && !m3_predictive_me 
+#if m2_predictive_me
+        if (picture_control_set_ptr->enc_mode <= ENC_M3)
+#else
         if (picture_control_set_ptr->enc_mode <= ENC_M2)
+#endif
 #else
         if (picture_control_set_ptr->enc_mode <= ENC_M1)
 #endif
@@ -1621,7 +1627,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         context_ptr->blk_skip_decision = EB_FALSE;
 #endif
     // Derive Trellis Quant Coeff Optimization Flag
-#if M3_0_CANDIDATE
+#if M3_0_CANDIDATE && !m4_trellis
     if (picture_control_set_ptr->enc_mode <= ENC_M3)
 #else
     if (picture_control_set_ptr->enc_mode <= ENC_M2)
@@ -1638,6 +1644,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #if enable_redundant_blk
         if (picture_control_set_ptr->enc_mode >= ENC_M0)
 #else
+
         if (picture_control_set_ptr->enc_mode >= ENC_M1)
 #endif
             context_ptr->redundant_blk = EB_TRUE;

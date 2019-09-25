@@ -47,6 +47,7 @@ extern "C" {
 #define TWO_PASSES_MATCH                   1 // matches 1 pass and 2 pass for the same mode
 #define USE_PRED_ONLY_IN_2ND_PASS          1
 #endif
+
     /*sc m0 feats*/
 #define enable_full_loop_escape               0
 #define disable_global_mv                     0
@@ -125,6 +126,33 @@ extern "C" {
 #define m3_nsq_depth                            0
 #define m3_tx_reduced_set                       0
 #define m3_intra_pred                           0
+    /*M3 context*/
+#define m2_sc_cand_nx4                          0
+#define m2_nsq_depth                            0
+#define m2_tx_reduced_set                       0
+#define m2_intra_pred_in_m3                     0
+#define m2_filter_intra                         0
+#define m4_trellis                              0
+#define m4_qfp                                  0
+#define m4_nsq_depth                            0
+#define m4_ref_count                            0
+#define m4_mrp_mode                             0
+#define m4_me_filtering                         0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
