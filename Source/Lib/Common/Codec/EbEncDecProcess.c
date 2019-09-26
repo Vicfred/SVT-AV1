@@ -1430,7 +1430,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #elif m1_nx4
     if (picture_control_set_ptr->enc_mode <= ENC_M2)
 #elif m2_sc_cand_nx4
-    if (picture_control_set_ptr->enc_mode <= ENC_M2)
+    if (picture_control_set_ptr->enc_mode <= ENC_M3)
 #else
     if (picture_control_set_ptr->enc_mode <= ENC_M1)
 #endif
@@ -1489,7 +1489,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #else
             context_ptr->unipred3x3_injection = 1;
 #endif
+#if m5_unipred_3x3
+        else if (picture_control_set_ptr->enc_mode <= ENC_M3)
+#else
         else if (picture_control_set_ptr->enc_mode <= ENC_M4)
+#endif
             context_ptr->unipred3x3_injection = 2;
         else
             context_ptr->unipred3x3_injection = 0;
@@ -1510,7 +1514,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 1                    ON FULL
     // 2                    Reduced set
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
-#if disable_bipred3x3_injection
+#if disable_bipred3x3_injection || m5_bipred_3x3
         if (0)
 #else
         if (picture_control_set_ptr->enc_mode <= ENC_M4)
@@ -1549,7 +1553,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
         if (picture_control_set_ptr->enc_mode <= ENC_M1)
 #endif
             context_ptr->predictive_me_level = 4;
+#if m5_pred_me
+        else if (picture_control_set_ptr->enc_mode <= ENC_M3)
+#else
         else if (picture_control_set_ptr->enc_mode <= ENC_M4)
+#endif
             context_ptr->predictive_me_level = 2;
         else
             context_ptr->predictive_me_level = 0;
@@ -1579,7 +1587,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     // 0                    ON for 8x8 and above
     // 1                    ON for 16x16 and above
     // 2                    ON for 32x32 and above
-#if enable_intrp_search_blk_size
+#if enable_intrp_search_blk_size || m5_itrp_search_blk_size
 
     if (0)
 #else
@@ -1597,7 +1605,7 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #if SPATIAL_SSE
     // Derive Spatial SSE Flag
     if (picture_control_set_ptr->parent_pcs_ptr->sc_content_detected)
-#if disable_spatial_sse_full_loop
+#if disable_spatial_sse_full_loop || m5_spatial_sse_fl
         if (0)
 #else
         if (picture_control_set_ptr->enc_mode <= ENC_M4)
@@ -1628,7 +1636,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
 #endif
     // Derive Trellis Quant Coeff Optimization Flag
 #if M3_0_CANDIDATE && !m4_trellis
+#if m3_trellis
+    if (picture_control_set_ptr->enc_mode <= ENC_M4)
+#else
     if (picture_control_set_ptr->enc_mode <= ENC_M3)
+#endif
 #else
     if (picture_control_set_ptr->enc_mode <= ENC_M2)
 #endif
@@ -1669,7 +1681,11 @@ EbErrorType signal_derivation_enc_dec_kernel_oq(
     if (picture_control_set_ptr->enc_mode == ENC_M0)
 #endif
         context_ptr->md_staging_mode = 1;
+#if m5_md_staging
+    else if (picture_control_set_ptr->enc_mode <= ENC_M3)
+#else
     else if (picture_control_set_ptr->enc_mode <= ENC_M4)
+#endif
         context_ptr->md_staging_mode = 3;
     else
         context_ptr->md_staging_mode = 0; //use fast-loop0->full-loop

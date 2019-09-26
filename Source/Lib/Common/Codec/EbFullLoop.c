@@ -1986,7 +1986,11 @@ void av1_quantize_inv_quantize(
     // Hsan: set to FALSE until adding x86 quantize_fp
 #if ENABLE_QUANT_FP
 #if M3_0_CANDIDATE && !m4_qfp
+#if m3_qfp
+    EbBool perform_quantize_fp = picture_control_set_ptr->enc_mode <= ENC_M4 ? EB_TRUE : EB_FALSE;
+#else
     EbBool perform_quantize_fp = picture_control_set_ptr->enc_mode <= ENC_M3 ? EB_TRUE : EB_FALSE;
+#endif
 #else
     EbBool perform_quantize_fp = picture_control_set_ptr->enc_mode <= ENC_M2 ? EB_TRUE : EB_FALSE;
 #endif

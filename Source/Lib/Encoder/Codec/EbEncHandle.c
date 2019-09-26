@@ -2298,6 +2298,8 @@ void SetParamBasedOnInput(SequenceControlSet *sequence_control_set_ptr)
     //1: MRP Mode 1 (2,2)
 #if m4_mrp_mode
     sequence_control_set_ptr->mrp_mode = (uint8_t)(sequence_control_set_ptr->static_config.enc_mode <= ENC_M2) ? 0 : 1;
+#elif m3_mrp_mode
+    sequence_control_set_ptr->mrp_mode = (uint8_t)(sequence_control_set_ptr->static_config.enc_mode <= ENC_M4) ? 0 : 1;
 #else
     sequence_control_set_ptr->mrp_mode = (uint8_t) (sequence_control_set_ptr->static_config.enc_mode <= ENC_M3) ? 0 : 1;
 #endif
@@ -2327,7 +2329,11 @@ void SetParamBasedOnInput(SequenceControlSet *sequence_control_set_ptr)
 #if me_filtering || m4_me_filtering
     if (0)
 #else
+#if m3_me_filtering
+    if (sequence_control_set_ptr->static_config.enc_mode <= ENC_M4)
+#else
     if (sequence_control_set_ptr->static_config.enc_mode <= ENC_M3)
+#endif
 #endif
         sequence_control_set_ptr->down_sampling_method_me_search = ME_FILTERED_DOWNSAMPLED;
     else

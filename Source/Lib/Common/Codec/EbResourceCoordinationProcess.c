@@ -765,7 +765,11 @@ void* resource_coordination_kernel(void *input_ptr)
             // Set compound mode      Settings
             // 0                 OFF: No compond mode search : AVG only
             // 1                 ON: full
+#if m5_compound_mode
+            sequence_control_set_ptr->compound_mode = (sequence_control_set_ptr->static_config.enc_mode <= ENC_M3) ? 1 : 0;
+#else
             sequence_control_set_ptr->compound_mode = (sequence_control_set_ptr->static_config.enc_mode <= ENC_M4) ? 1 : 0;
+#endif
 
             //sequence_control_set_ptr->order_hint_info_st.enable_order_hint = 1;
             //sequence_control_set_ptr->order_hint_info_st.order_hint_bits_minus_1 = 6;
