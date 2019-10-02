@@ -38,7 +38,7 @@ extern "C" {
 #define PRED_CHANGE_5L               1 // Change the MRP in 5L Pictures 3, 5 , 7 and 9 use 1 as the reference, 11, 13, 15 and 17 use 9 as the reference
 
 #ifndef NON_AVX512_SUPPORT
-//#define NON_AVX512_SUPPORT
+#define NON_AVX512_SUPPORT
 #endif
 
 #define MR_MODE                           0
