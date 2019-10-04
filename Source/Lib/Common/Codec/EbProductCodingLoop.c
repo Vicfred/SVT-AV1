@@ -1750,17 +1750,212 @@ void sort_stage0_fast_candidates(
 )
 {
     ModeDecisionCandidateBuffer **buffer_ptr_array = context_ptr->candidate_buffer_ptr_array;
+#if !SPEED_OPT
     //  fill cand_buff_indices with surviving buffer indices ; move the scratch candidates (MAX_CU_COST) to the last spots (if any)
     uint32_t ordered_start_idx = 0;
     uint32_t ordered_end_idx = input_buffer_count - 1;
+#endif
 
     uint32_t input_buffer_end_idx = input_buffer_start_idx + input_buffer_count - 1;
+#if SPEED_OPT
+    uint32_t buffer_index, i, j;
+    uint32_t k = 0;
+    for (buffer_index = input_buffer_start_idx; buffer_index <= input_buffer_end_idx; buffer_index++, k++) {
+        cand_buff_indices[k] = buffer_index;
+    }
+    for (i = 0; i < input_buffer_count - 1; ++i) {
+        for (j = i + 1; j < input_buffer_count; ++j) {
+            if (*(buffer_ptr_array[cand_buff_indices[j]]->fast_cost_ptr) < *(buffer_ptr_array[cand_buff_indices[i]]->fast_cost_ptr)) {
+                buffer_index = cand_buff_indices[i];
+                cand_buff_indices[i] = (uint32_t)cand_buff_indices[j];
+                cand_buff_indices[j] = (uint32_t)buffer_index;
 
+            }
+        }
+    }
+#else
     for (uint32_t buffer_index = input_buffer_start_idx; buffer_index <= input_buffer_end_idx; buffer_index++) {
         if (*(buffer_ptr_array[buffer_index]->fast_cost_ptr) == MAX_CU_COST)
             cand_buff_indices[ordered_end_idx--] = buffer_index;
         else
             cand_buff_indices[ordered_start_idx++] = buffer_index;
+    }
+#endif
+}
+
+static INLINE void heap_sort_stage_max_node_fast_cost_ptr(
+    ModeDecisionCandidateBuffer **buffer_ptr,
+    uint32_t* sort_index, uint32_t i, uint32_t num)
+{
+    uint32_t left, right, max;
+
+    /* Loop for removing recursion. */
+    while (1) {
+        left = 2 * i;
+        right = 2 * i + 1;
+        max = i;
+
+        if (left <= num && *(buffer_ptr[sort_index[left]]->fast_cost_ptr) >
+            *(buffer_ptr[sort_index[i]]->fast_cost_ptr)) {
+            max = left;
+        }
+
+        if (right <= num && *(buffer_ptr[sort_index[right]]->fast_cost_ptr) >
+            *(buffer_ptr[sort_index[max]]->fast_cost_ptr)) {
+            max = right;
+        }
+
+        if (max == i) {
+            break;
+        }
+
+        uint32_t swap = sort_index[i];
+        sort_index[i] = sort_index[max];
+        sort_index[max] = swap;
+        i = max;
+    }
+}
+
+static void qsort_stage_max_node_fast_cost_ptr(
+    ModeDecisionCandidateBuffer **buffer_ptr_array, uint32_t *dst,
+    uint32_t *a, uint32_t *b, int num)
+{
+    if (num < 4) {
+        if (num < 2) {
+            if (num) {
+                //num = 1
+                dst[0] = a[0];
+            }
+            return;
+        }
+        if (num > 2) {
+            //num = 3
+            uint32_t tmp_a = a[0];
+            uint32_t tmp_b = a[1];
+            uint32_t tmp_c = a[2];
+            uint64_t val_a = *(buffer_ptr_array[tmp_a]->fast_cost_ptr);
+            uint64_t val_b = *(buffer_ptr_array[tmp_b]->fast_cost_ptr);
+            uint64_t val_c = *(buffer_ptr_array[tmp_c]->fast_cost_ptr);
+
+            if (val_a < val_b) {
+                if (val_b < val_c) {
+                    //Sorted abc
+                    dst[0] = tmp_a;
+                    dst[1] = tmp_b;
+                    dst[2] = tmp_c;
+                }
+                else {
+                    //xcx
+                    if (val_a < val_c) {
+                        //Sorted 132
+                        dst[0] = tmp_a;
+                        dst[1] = tmp_c;
+                        dst[2] = tmp_b;
+                    }
+                    else {
+                        //Sorted 231
+                        dst[0] = tmp_c;
+                        dst[1] = tmp_a;
+                        dst[2] = tmp_b;
+                    }
+                }
+            }
+            else {
+                //a>b
+                if (val_b > val_c) {
+                    //Sorted cba
+                    dst[0] = tmp_c;
+                    dst[1] = tmp_b;
+                    dst[2] = tmp_a;
+                }
+                else {
+                    //bxx
+                    if (val_a < val_c) {
+                        //Sorted bac
+                        dst[0] = tmp_b;
+                        dst[1] = tmp_a;
+                        dst[2] = tmp_c;
+                    }
+                    else {
+                        //Sorted bca
+                        dst[0] = tmp_b;
+                        dst[1] = tmp_c;
+                        dst[2] = tmp_a;
+                    }
+                }
+            }
+            return;
+        }
+
+        /* bacuse a and dst can point on this same array, copy temporary values*/
+        uint32_t tmp_a = a[0];
+        uint32_t tmp_b = a[1];
+        if (*(buffer_ptr_array[tmp_a]->fast_cost_ptr) < *(buffer_ptr_array[tmp_b]->fast_cost_ptr)) {
+            dst[0] = tmp_a;
+            dst[1] = tmp_b;
+        }
+        else {
+            dst[0] = tmp_b;
+            dst[1] = tmp_a;
+        }
+        return;
+    }
+
+    int sorted_down = 0;
+    int sorted_up = num - 1;
+
+    uint64_t pivot_val = *(buffer_ptr_array[a[0]]->fast_cost_ptr);
+    for (int i = 1; i < num; ++i) {
+        if (pivot_val < *(buffer_ptr_array[a[i]]->fast_cost_ptr)) {
+            b[sorted_up] = a[i];
+            sorted_up--;
+        }
+        else {
+            b[sorted_down] = a[i];
+            sorted_down++;
+        }
+    }
+
+    dst[sorted_down] = a[0];
+
+    qsort_stage_max_node_fast_cost_ptr(buffer_ptr_array, dst,
+        b, a, sorted_down);
+
+    qsort_stage_max_node_fast_cost_ptr(buffer_ptr_array, dst + (sorted_down + 1),
+        b + (sorted_down + 1), a + (sorted_down + 1), num - (sorted_down)-1);
+}
+
+static INLINE void sort_array_index_fast_cost_ptr(
+    ModeDecisionCandidateBuffer** buffer_ptr,
+    uint32_t* sort_index, uint32_t num)
+{
+    if (num <= 60) {
+        //For small array uses 'quick sort', work much faster for small array,
+        //but required alloc temporary memory.
+        uint32_t  sorted_tmp[60];
+        qsort_stage_max_node_fast_cost_ptr(buffer_ptr, sort_index, sort_index, sorted_tmp, num);
+        return;
+    }
+
+    //For big arrays uses 'heap sort', not need allocate memory
+    //For small array less that 40 elements heap sort work slower than 'insertion sort'
+    uint32_t i;
+    for (i = (num - 1) / 2; i > 0; i--)
+    {
+        heap_sort_stage_max_node_fast_cost_ptr(
+            buffer_ptr, sort_index, i, num - 1);
+    }
+
+    heap_sort_stage_max_node_fast_cost_ptr(
+        buffer_ptr, sort_index, 0, num - 1);
+
+    for (i = num - 1; i > 0; i--)
+    {
+        uint32_t swap = sort_index[i];
+        sort_index[i] = sort_index[0];
+        sort_index[0] = swap;
+        heap_sort_stage_max_node_fast_cost_ptr(
+            buffer_ptr, sort_index, 0, i - 1);
     }
 }
 
@@ -1769,18 +1964,11 @@ void sort_stage1_fast_candidates(
     uint32_t                      num_of_cand_to_sort,
     uint32_t                     *cand_buff_indices)
 {
-    uint32_t i, j, index;
     ModeDecisionCandidateBuffer **buffer_ptr_array = context_ptr->candidate_buffer_ptr_array;
-    for (i = 0; i < num_of_cand_to_sort - 1; ++i) {
-        for (j = i + 1; j < num_of_cand_to_sort; ++j) {
-            if (*(buffer_ptr_array[cand_buff_indices[j]]->fast_cost_ptr) < *(buffer_ptr_array[cand_buff_indices[i]]->fast_cost_ptr)) {
-                index = cand_buff_indices[i];
-                cand_buff_indices[i] = (uint32_t)cand_buff_indices[j];
-                cand_buff_indices[j] = (uint32_t)index;
 
-            }
-        }
-    }
+    //sorted best: *(buffer_ptr_array[sorted_candidate_index_array[?]]->fast_cost_ptr)
+    sort_array_index_fast_cost_ptr(buffer_ptr_array,
+        cand_buff_indices, num_of_cand_to_sort);
 }
 
 void sort_stage2_candidates(
@@ -1834,17 +2022,9 @@ void construct_best_sorted_arrays_md_stage_2(
         }
     }
 
-    uint32_t j, index;
-    for (i = 0; i < fullReconCandidateCount - 1; ++i) {
-        for (j = i + 1; j < fullReconCandidateCount; ++j) {
-            if (*(buffer_ptr_array[sorted_candidate_index_array[j]]->fast_cost_ptr) < *(buffer_ptr_array[sorted_candidate_index_array[i]]->fast_cost_ptr)) {
-                index = sorted_candidate_index_array[i];
-                sorted_candidate_index_array[i] = (uint32_t)sorted_candidate_index_array[j];
-                sorted_candidate_index_array[j] = (uint32_t)index;
-            }
-        }
-    }
-
+    //sorted best: *(buffer_ptr_array[sorted_candidate_index_array[?]]->fast_cost_ptr)
+    sort_array_index_fast_cost_ptr(buffer_ptr_array,
+        sorted_candidate_index_array, fullReconCandidateCount);
 
     // tx search
     *ref_fast_cost = *(buffer_ptr_array[sorted_candidate_index_array[0]]->fast_cost_ptr);
@@ -1883,18 +2063,11 @@ void construct_best_sorted_arrays_md_stage_3(
         }
     }
 
-    uint32_t j, index;
-    for (i = 0; i < fullReconCandidateCount - 1; ++i) {
-        for (j = i + 1; j < fullReconCandidateCount; ++j) {
-            if (*(buffer_ptr_array[sorted_candidate_index_array[j]]->fast_cost_ptr) < *(buffer_ptr_array[sorted_candidate_index_array[i]]->fast_cost_ptr)) {
-                index = sorted_candidate_index_array[i];
-                sorted_candidate_index_array[i] = (uint32_t)sorted_candidate_index_array[j];
-                sorted_candidate_index_array[j] = (uint32_t)index;
-
-            }
-        }
-    }
+    //sorted best: *(buffer_ptr_array[sorted_candidate_index_array[?]]->fast_cost_ptr)
+    sort_array_index_fast_cost_ptr(buffer_ptr_array,
+        sorted_candidate_index_array, fullReconCandidateCount);
 }
+
 void md_stage_0(
 
     PictureControlSet            *picture_control_set_ptr,
@@ -5766,6 +5939,29 @@ void search_best_independent_uv_mode(
     // End uv search path
     context_ptr->uv_search_path = EB_FALSE;
 }
+#if SPEED_OPT
+void inter_class_decision_count_1(
+    struct ModeDecisionContext   *context_ptr
+)
+{
+    ModeDecisionCandidateBuffer **buffer_ptr_array = context_ptr->candidate_buffer_ptr_array;
+    // Distortion-based NIC proning not applied to INTRA clases: CLASS_0 and CLASS
+    for (CAND_CLASS cand_class_it = CAND_CLASS_1; cand_class_it <= CAND_CLASS_3; cand_class_it++) {
+        if (context_ptr->md_stage_0_count[cand_class_it] > 0 && context_ptr->md_stage_1_count[cand_class_it] > 0) {
+            uint32_t *cand_buff_indices = context_ptr->cand_buff_indices[cand_class_it];
+            if (*(buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr) < *(buffer_ptr_array[context_ptr->cand_buff_indices[CAND_CLASS_0][0]]->fast_cost_ptr)) {
+                uint32_t fast1_cand_count = 1;
+                while (fast1_cand_count < context_ptr->md_stage_1_count[cand_class_it] && ((((*(buffer_ptr_array[cand_buff_indices[fast1_cand_count]]->fast_cost_ptr) - *(buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr)) * 100) / (*(buffer_ptr_array[cand_buff_indices[0]]->fast_cost_ptr))) < context_ptr->dist_base_md_stage_0_count_th)) {
+                    fast1_cand_count++;
+                }
+                context_ptr->md_stage_1_count[cand_class_it] = fast1_cand_count;
+            }
+        }
+    }
+}
+extern aom_variance_fn_ptr_t mefn_ptr[BlockSizeS_ALL];
+unsigned int eb_av1_get_sby_perpixel_variance(const aom_variance_fn_ptr_t *fn_ptr, const uint8_t *src, int stride, BlockSize bs);
+#endif
 void md_encode_block(
     SequenceControlSet             *sequence_control_set_ptr,
     PictureControlSet              *picture_control_set_ptr,
@@ -5815,6 +6011,12 @@ void md_encode_block(
     if (allowed_ns_cu(
         is_nsq_table_used, picture_control_set_ptr->parent_pcs_ptr->nsq_max_shapes_md,context_ptr,is_complete_sb ))
     {
+
+#if SPEED_OPT
+        const aom_variance_fn_ptr_t *fn_ptr = &mefn_ptr[context_ptr->blk_geom->bsize];
+        context_ptr->source_variance = eb_av1_get_sby_perpixel_variance(fn_ptr, (input_picture_ptr->buffer_y + inputOriginIndex), input_picture_ptr->stride_y, context_ptr->blk_geom->bsize);
+#endif
+
         ProductCodingLoopInitFastLoop(
             context_ptr,
             context_ptr->skip_coeff_neighbor_array,
@@ -5984,6 +6186,10 @@ void md_encode_block(
             }
         }
 
+#if SPEED_OPT
+        //after completing stage0, we might shorten cand count for some classes.
+        inter_class_decision_count_1(context_ptr);
+#endif
         context_ptr->md_stage = MD_STAGE_1;
         for (cand_class_it = CAND_CLASS_0; cand_class_it < CAND_CLASS_TOTAL; cand_class_it++) {
 
@@ -6510,9 +6716,13 @@ EB_EXTERN EbErrorType mode_decision_sb(
 
             // compare the cost of the parent to the cost of the already encoded child + an estimated cost for the remaining child @ the current depth
             // if the total child cost is higher than the parent cost then skip the remaining  child @ the current depth
-            // when MD_EXIT_THSL=0 the estimated cost for the remaining child is not taken into account and the action will be lossless compared to no exit
+            // when md_exit_th=0 the estimated cost for the remaining child is not taken into account and the action will be lossless compared to no exit
             // MD_EXIT_THSL could be tuned toward a faster encoder but lossy
+#if SPEED_OPT
+            if (parent_depth_cost <= current_depth_cost + (current_depth_cost* (4 - context_ptr->blk_geom->quadi)* context_ptr->md_exit_th / context_ptr->blk_geom->quadi / 100)) {
+#else
             if (parent_depth_cost <= current_depth_cost + (current_depth_cost* (4 - context_ptr->blk_geom->quadi)* MD_EXIT_THSL / context_ptr->blk_geom->quadi / 100)) {
+#endif
                 skip_next_sq = 1;
                 next_non_skip_blk_idx_mds = parent_depth_idx_mds + ns_depth_offset[sequence_control_set_ptr->seq_header.sb_size == BLOCK_128X128][context_ptr->blk_geom->depth - 1];
             }
@@ -6558,7 +6768,11 @@ EB_EXTERN EbErrorType mode_decision_sb(
             uint32_t first_blk_idx = context_ptr->cu_ptr->mds_idx - (blk_geom->nsi);//index of first block in this partition
             for (int blk_it = 0; blk_it < blk_geom->nsi + 1; blk_it++)
                 tot_cost += context_ptr->md_local_cu_unit[first_blk_idx + blk_it].cost;
+#if SPEED_OPT
+            if ((tot_cost + tot_cost * (blk_geom->totns - (blk_geom->nsi + 1))* context_ptr->md_exit_th / (blk_geom->nsi + 1) / 100) > context_ptr->md_local_cu_unit[context_ptr->blk_geom->sqi_mds].cost)
+#else
             if ((tot_cost + tot_cost * (blk_geom->totns - (blk_geom->nsi + 1))* MD_EXIT_THSL / (blk_geom->nsi + 1) / 100) > context_ptr->md_local_cu_unit[context_ptr->blk_geom->sqi_mds].cost)
+#endif
                 skip_next_nsq = 1;
         }
         if (blk_geom->shape != PART_N) {
